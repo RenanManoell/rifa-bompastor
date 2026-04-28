@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Rifa Beneficente - Casa Seu Bom Pastor</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- LOADING GLOBAL -->
+    <div class="global-loading" id="globalLoading">
+        <div class="global-loading-content">
+            <div class="global-spinner"></div>
+            <p>Carregando...</p>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="container">
+        <!-- CABEÇALHO -->
+        <header>
+            <div class="logo-area">
+                <img src="assets/logo.png" alt="Seu Bom Pastor" class="logo" id="logo-img" onerror="this.src='https://via.placeholder.com/80x80?text=SBP'">
+            </div>
+            <div class="header-text">
+                <h1>Rifa Beneficente</h1>
+                <p class="subtitle">Casa de Espiritualidade Seu Bom Pastor</p>
+                <div class="campaign-badge">
+                    <span>🌸 Campanha do Dia das Mães 🌸</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- BARRA DE ADMIN -->
+        <div class="admin-bar">
+            <button id="btn-admin" class="admin-btn">
+                <span>🔒</span> Admin
+            </button>
+        </div>
+
+        <!-- PRÊMIOS -->
+        <section class="prizes">
+            <h2 class="section-title">Prêmios</h2>
+            <div class="prizes-grid">
+                <div class="prize-card">
+                    <div class="prize-image">
+                        <img src="https://innovacestas.com.br/wp-content/uploads/2023/05/150.png" alt="Cesta de Café da Manhã">
+                    </div>
+                    <div class="prize-info">
+                        <span class="prize-place">3º Lugar</span>
+                        <span class="prize-name">Cesta de Café da Manhã</span>
+                    </div>
+                </div>
+                <div class="prize-card">
+                    <div class="prize-image">
+                        <img src="https://m.media-amazon.com/images/I/71IyaqAfuKL._AC_UF894,1000_QL80_.jpg" alt="Airfryer">
+                    </div>
+                    <div class="prize-info">
+                        <span class="prize-place">2º Lugar</span>
+                        <span class="prize-name">Airfryer</span>
+                    </div>
+                </div>
+                <div class="prize-card">
+                    <div class="prize-image">
+                        <img src="https://images.kabum.com.br/produtos/fotos/sync_mirakl/376284/large/Smart-TV-32-Polegadas-HQ-LED-HD-3-HDMI-2-USB-Wi-Fi-Android-11-Design-Slim-Hqstv32nk_1763419127.jpg" alt="Televisão 32">
+                    </div>
+                    <div class="prize-info">
+                        <span class="prize-place">1º Lugar</span>
+                        <span class="prize-name">Televisão 32"</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ESTATÍSTICAS -->
+        <section class="stats">
+            <div class="stat-item">
+                <span class="stat-number" id="total-numeros">0</span>
+                <span class="stat-label">Números</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-number" id="disponiveis">0</span>
+                <span class="stat-label">Disponíveis</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="stat-number" id="vendidos">0</span>
+                <span class="stat-label">Vendidos</span>
+            </div>
+        </section>
+
+        <!-- PROGRESSO -->
+        <div class="progress-section">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-info">
+                <span>Meta de arrecadação</span>
+                <strong id="percentual-vendido">0%</strong>
+            </div>
+        </div>
+
+        <!-- VALOR DO NÚMERO -->
+        <div class="value-card">
+            <span class="value-label">Valor da contribuição</span>
+            <span class="value-number" id="valor-bilhete">R$ 10,00</span>
+        </div>
+
+        <!-- FILTROS RÁPIDOS -->
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Todos</button>
+            <button class="filter-btn" data-filter="disponiveis">Disponíveis</button>
+            <button class="filter-btn" data-filter="carrinho">Meu Carrinho</button>
+        </div>
+
+        <!-- GRADE DE NÚMEROS -->
+        <section class="numbers-section">
+            <div class="section-header">
+                <h2 class="section-title">Escolha seus números</h2>
+                <span class="section-hint">✨ Clique para selecionar</span>
+            </div>
+            <div class="numbers-grid" id="numeros-grid">
+                <div class="loading-grid">Carregando números...</div>
+            </div>
+        </section>
+
+        <!-- CARRINHO FLUTUANTE -->
+        <div class="cart" id="cart">
+            <div class="cart-header" id="cartHeader">
+                <div class="cart-title">
+                    <span>🛒</span>
+                    <h3>Itens selecionados</h3>
+                </div>
+                <span class="cart-count" id="carrinho-count">0 números</span>
+            </div>
+            <div class="cart-items" id="carrinho-itens">
+                <div class="cart-empty">Nenhum número selecionado</div>
+            </div>
+            <div class="cart-footer">
+                <div class="cart-total">
+                    <span>Total</span>
+                    <strong id="carrinho-total">R$ 0,00</strong>
+                </div>
+                <button class="cart-btn" id="btn-finalizar" disabled>
+                    <span>✨</span> Confirmar contribuição <span>✨</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- RODAPÉ -->
+        <footer>
+            <p>Sorteio: <span id="data-sorteio">Dia das Mães - Maio 2025</span></p>
+            <p>Casa de Espiritualidade Seu Bom Pastor</p>
+        </footer>
+    </div>
+
+    <!-- ==================== MODAIS ==================== -->
+
+    <!-- MODAL ADMIN - LOGIN -->
+    <div class="modal" id="modal-admin-login">
+        <div class="modal-content modal-small">
+            <button class="modal-close" id="close-admin-login">&times;</button>
+            <div class="modal-icon">🔐</div>
+            <h3>Acesso Administrativo</h3>
+            <input type="password" id="admin-senha" placeholder="Digite a senha" class="input-field">
+            <button id="btn-login-admin" class="btn btn-primary btn-full">Entrar</button>
+        </div>
+    </div>
+
+    <!-- MODAL ADMIN - PAINEL -->
+    <div class="modal" id="modal-admin-panel">
+        <div class="modal-content modal-large">
+            <button class="modal-close" id="close-admin-panel">&times;</button>
+            <h3>Painel Administrativo</h3>
+            
+            <div class="admin-stats-grid">
+                <div class="admin-stat-card">
+                    <span class="admin-stat-value" id="admin-total">0</span>
+                    <span>Total</span>
+                </div>
+                <div class="admin-stat-card">
+                    <span class="admin-stat-value" id="admin-disponiveis">0</span>
+                    <span>Disponíveis</span>
+                </div>
+                <div class="admin-stat-card">
+                    <span class="admin-stat-value" id="admin-vendidos">0</span>
+                    <span>Vendidos</span>
+                </div>
+                <div class="admin-stat-card">
+                    <span class="admin-stat-value" id="admin-arrecadado">R$ 0</span>
+                    <span>Arrecadado</span>
+                </div>
+            </div>
+            
+            <div class="admin-section">
+                <h4>Venda manual</h4>
+                <div class="form-group">
+                    <input type="number" id="venda-numero" placeholder="Número" class="input-field">
+                    <input type="text" id="venda-nome" placeholder="Nome completo" class="input-field">
+                    <input type="email" id="venda-email" placeholder="E-mail" class="input-field">
+                    <input type="tel" id="venda-telefone" placeholder="Telefone" class="input-field phone-mask">
+                    <button id="btn-vender-manual" class="btn btn-secondary btn-full">Registrar venda</button>
+                </div>
+            </div>
+            
+            <div class="admin-section">
+                <h4>Buscar número</h4>
+                <div class="form-row">
+                    <input type="number" id="buscar-numero" placeholder="Número" class="input-field">
+                    <button id="btn-buscar" class="btn btn-outline">Buscar</button>
+                </div>
+                <div id="resultado-busca" class="search-result"></div>
+            </div>
+            
+            <div class="admin-section">
+                <h4>Últimas vendas</h4>
+                <div id="ultimas-vendas-lista" class="sales-list">Carregando...</div>
+            </div>
+            
+            <button id="refresh-admin" class="btn btn-light btn-full">Atualizar</button>
+        </div>
+    </div>
+
+    <!-- MODAL DADOS -->
+    <div class="modal" id="modal-dados">
+        <div class="modal-content modal-small">
+            <button class="modal-close" id="close-dados">&times;</button>
+            <h3>Dados do contribuinte</h3>
+            <form id="form-dados">
+                <input type="text" id="nome" placeholder="Nome completo" class="input-field" required>
+                <input type="email" id="email" placeholder="E-mail" class="input-field" required>
+                <input type="tel" id="telefone" placeholder="WhatsApp (Ex: +55 15 99640-4616)" class="input-field phone-mask">
+                <button type="submit" id="btn-finalizar-pagamento" class="btn btn-primary btn-full">💳 Gerar pagamento PIX</button>
+            </form>
+            <div id="loading"></div>
+        </div>
+    </div>
+
+    <!-- MODAL PIX -->
+    <div class="modal" id="modal-pix">
+        <div class="modal-content modal-small">
+            <button class="modal-close" id="close-pix">&times;</button>
+            <h3>Pagamento via PIX</h3>
+            <div class="qr-area">
+                <img id="qr-code" src="" alt="QR Code PIX">
+            </div>
+            <div class="pix-value" id="valor-pagar-pix"></div>
+            <div class="copy-area">
+                <code id="pix-code"></code>
+                <button id="copiar-codigo" class="btn btn-small">Copiar</button>
+            </div>
+            <div class="payment-status" id="status-pagamento">
+                <span class="status-icon">⏳</span> Aguardando pagamento...
+            </div>
+            <button id="verificar-pagamento" class="btn btn-outline btn-full">Verificar pagamento</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
