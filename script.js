@@ -4,6 +4,10 @@
 // ============================================
 
 const API_URL = "https://script.google.com/macros/s/AKfycbw6bLdf_Rt45EXOmaRJrDQZ-kyoc-gQ7HJarDA6uUvAf-mHVBSwvCWcLpvcCyCqez6J/exec";
+// Variáveis do Mercado Pago
+let mp = null;
+let cardForm = null;
+let currentAmount = 0;
 
 // Estado global
 let numerosDisponiveis = [];
@@ -510,23 +514,15 @@ async function processarPagamentoMultiplo() {
     const nome = document.getElementById('nome').value.trim();
     const email = document.getElementById('email').value.trim();
     let telefone = document.getElementById('telefone').value.trim();
-    
-    // VALIDAR SE O MÉTODO DE PAGAMENTO FOI SELECIONADO
     const metodo = validarMetodoPagamento();
-    if (!metodo) {
-        return; // Impede prosseguir se não selecionou
-    }
     
+    if (!metodo) return;
     if (!nome || !email) {
         showToast("Preencha nome e e-mail", "warning");
         return;
     }
     
     telefone = telefone.replace(/\D/g, "");
-    if (telefone && telefone.length < 10) {
-        showToast("Digite um telefone válido com DDD", "warning");
-        return;
-    }
     
     const btn = document.getElementById('btn-finalizar-pagamento');
     disableButton(btn, true);
@@ -534,10 +530,10 @@ async function processarPagamentoMultiplo() {
     
     try {
         const valorBilhete = parseFloat(document.getElementById('valor-bilhete').innerHTML.replace(/[^0-9,]/g, '').replace(',', '.')) || 10;
-        const valorTotal = carrinho.length * valorBilhete;
+        currentAmount = carrinho.length * valorBilhete;
         const numerosStr = carrinho.join(',');
         
-        const url = `${API_URL}?action=createMultiPayment&numeros=${encodeURIComponent(numerosStr)}&comprador=${encodeURIComponent(nome)}&email=${encodeURIComponent(email)}&telefone=${encodeURIComponent(telefone)}&metodo=${metodo}&valor_total=${valorTotal}`;
+        const url = `${API_URL}?action=createMultiPayment&numeros=${encodeURIComponent(numerosStr)}&comprador=${encodeURIComponent(nome)}&email=${encodeURIComponent(email)}&telefone=${encodeURIComponent(telefone)}&metodo=${metodo}&valor_total=${currentAmount}`;
         
         const response = await fetch(url);
         const result = await response.json();
@@ -546,10 +542,6 @@ async function processarPagamentoMultiplo() {
             currentPaymentId = result.paymentId;
             document.getElementById('modal-dados').style.display = 'none';
             document.getElementById('form-dados').reset();
-            
-            // Resetar seleção de método para a próxima vez
-            document.querySelectorAll('input[name="metodo"]').forEach(radio => radio.checked = false);
-            document.querySelector('input[value="pix"]').checked = true; // Padrão PIX
             
             if (metodo === 'pix') {
                 // PIX: mostra QR Code
@@ -562,25 +554,16 @@ async function processarPagamentoMultiplo() {
                 iniciarTimerPagamento();
                 iniciarVerificacaoAutomatica();
                 
-                showToast(`Pagamento PIX gerado! Você tem 5 minutos para pagar. Total: ${formatarMoeda(result.valor_total)}`, "success");
+                showToast(`Pagamento PIX gerado! Total: ${formatarMoeda(result.valor_total)}`, "success");
             } else {
-                // CARTÃO: redireciona para o link do Mercado Pago
-                if (result.payment_link) {
-                    showToast(`Redirecionando para pagamento com cartão...`, "info");
-                    // Salvar dados para recuperar depois
-                    sessionStorage.setItem('compra_pendente', JSON.stringify({
-                        paymentId: result.paymentId,
-                        numeros: carrinho,
-                        valor_total: result.valor_total
-                    }));
-                    // Redirecionar para o link do Mercado Pago
-                    window.location.href = result.payment_link;
-                } else {
-                    showToast("Erro ao gerar link de pagamento", "error");
-                }
+                // CARTÃO: abre modal com formulário
+                atualizarParcelas(currentAmount);
+                document.getElementById('modal-cartao').style.display = 'flex';
+                
+                // Inicializar Mercado Pago
+                iniciarMercadoPago();
             }
             
-            const numerosComprados = [...carrinho];
             carrinho = [];
             atualizarCarrinhoUI();
             renderizarNumeros();
@@ -589,13 +572,205 @@ async function processarPagamentoMultiplo() {
             showToast(result.error || "Erro ao processar pagamento", "error");
         }
     } catch (error) {
-        console.error(error);
         showToast("Erro de conexão. Tente novamente.", "error");
     } finally {
         disableButton(btn, false, "💳 Gerar pagamento");
         showLoading(false);
     }
 }
+
+// ============================================
+// CHECKOUT TRANSPARENTE - CARTÃO
+// ============================================
+
+function iniciarMercadoPago() {
+    // Public Key do Mercado Pago (coloque a sua)
+    // const publicKey = 'APP_USR-5f9067e1-6b8d-4ad6-8be5-e45da73b1660';
+    const publicKey = 'TEST-c610c49f-132a-40ff-873a-52fa6f0a0134';
+    
+    if (!mp) {
+        mp = new MercadoPago(publicKey, {
+            locale: 'pt-BR'
+        });
+    }
+}
+
+async function processarPagamentoCartao() {
+    const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const cardExpiry = document.getElementById('cardExpiry').value;
+    const cardCvv = document.getElementById('cardCvv').value;
+    const cardHolder = document.getElementById('cardHolder').value;
+    const cardDocument = document.getElementById('cardDocument').value.replace(/\D/g, '');
+    const installments = parseInt(document.getElementById('installments').value);
+    
+    // Validações
+    if (!cardNumber || cardNumber.length < 13) {
+        showToast("Número do cartão inválido", "warning");
+        return;
+    }
+    
+    if (!cardExpiry || !cardExpiry.includes('/')) {
+        showToast("Data de validade inválida (MM/AA)", "warning");
+        return;
+    }
+    
+    if (!cardCvv || cardCvv.length < 3) {
+        showToast("CVV inválido", "warning");
+        return;
+    }
+    
+    if (!cardHolder) {
+        showToast("Nome do titular é obrigatório", "warning");
+        return;
+    }
+    
+    if (!cardDocument || cardDocument.length !== 11) {
+        showToast("CPF inválido (11 dígitos)", "warning");
+        return;
+    }
+    
+    const [expMonth, expYear] = cardExpiry.split('/');
+    
+    const btn = document.getElementById('btn-pagar-cartao');
+    const loading = document.getElementById('cartao-loading');
+    const form = document.getElementById('form-cartao');
+    
+    btn.disabled = true;
+    form.style.display = 'none';
+    loading.style.display = 'block';
+    
+    try {
+        // Inicializar Mercado Pago se necessário
+        iniciarMercadoPago();
+        
+        // Criar card token usando o método correto do SDK
+        const cardToken = await mp.createCardToken({
+            cardNumber: cardNumber,
+            cardholderName: cardHolder,
+            identificationType: 'CPF',
+            identificationNumber: cardDocument,
+            securityCode: cardCvv,
+            expirationMonth: expMonth,
+            expirationYear: expYear
+        });
+        
+        // Aguardar o token ser gerado
+        const token = cardToken.id;
+        
+        if (!token) {
+            throw new Error("Não foi possível gerar o token do cartão");
+        }
+        
+        console.log("Token gerado:", token);
+        
+        // Enviar token para o backend
+        const response = await fetch(`${API_URL}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'processCardPayment',
+                paymentId: currentPaymentId,
+                token: token,
+                installments: installments,
+                payment_method_id: 'visa'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast("✅ Pagamento aprovado! Enviando e-mail de confirmação...", "success");
+            
+            // Mostrar mensagem de sucesso no modal
+            const modalContent = document.querySelector('#modal-cartao .modal-content');
+            const formContainer = document.getElementById('form-cartao');
+            const loadingContainer = document.getElementById('cartao-loading');
+            
+            if (formContainer) formContainer.style.display = 'none';
+            if (loadingContainer) loadingContainer.style.display = 'none';
+            
+            const successDiv = document.createElement('div');
+            successDiv.className = 'status-confirmado';
+            successDiv.innerHTML = `
+                <span style="font-size: 48px;">✅</span>
+                <h3>Pagamento Confirmado!</h3>
+                <p>Enviamos um e-mail de confirmação.</p>
+                <p style="margin-top: 10px;">Agradecemos sua contribuição!</p>
+            `;
+            modalContent.appendChild(successDiv);
+            
+            setTimeout(() => {
+                document.getElementById('modal-cartao').style.display = 'none';
+                carregarNumeros();
+                carregarInformacoesRifa();
+                currentPaymentId = null;
+                // Remover a div de sucesso
+                successDiv.remove();
+                if (formContainer) formContainer.style.display = 'block';
+            }, 4000);
+        } else {
+            showToast(result.error || "Erro ao processar pagamento", "error");
+            form.style.display = 'block';
+            loading.style.display = 'none';
+        }
+    } catch (error) {
+        console.error("Erro no processamento do cartão:", error);
+        showToast(error.message || "Erro ao processar cartão. Verifique os dados.", "error");
+        form.style.display = 'block';
+        loading.style.display = 'none';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// Eventos de máscara para o formulário de cartão
+function configurarMascarasCartao() {
+    const cardNumberInput = document.getElementById('cardNumber');
+    const cardExpiryInput = document.getElementById('cardExpiry');
+    const cardDocumentInput = document.getElementById('cardDocument');
+    
+    if (cardNumberInput) {
+        cardNumberInput.addEventListener('input', function(e) {
+            this.value = formatCardNumber(this.value);
+        });
+    }
+    
+    if (cardExpiryInput) {
+        cardExpiryInput.addEventListener('input', function(e) {
+            this.value = formatExpiry(this.value);
+        });
+    }
+    
+    if (cardDocumentInput) {
+        cardDocumentInput.addEventListener('input', function(e) {
+            this.value = formatCPF(this.value);
+        });
+    }
+}
+
+// Registrar evento do formulário de cartão
+document.addEventListener('DOMContentLoaded', function() {
+    configurarMascarasCartao();
+    
+    const formCartao = document.getElementById('form-cartao');
+    if (formCartao) {
+        formCartao.onsubmit = async (e) => {
+            e.preventDefault();
+            await processarPagamentoCartao();
+        };
+    }
+    
+    const closeCartao = document.getElementById('close-cartao-modal');
+    if (closeCartao) {
+        closeCartao.onclick = () => {
+            document.getElementById('modal-cartao').style.display = 'none';
+            // Resetar formulário
+            document.getElementById('form-cartao').style.display = 'block';
+            document.getElementById('cartao-loading').style.display = 'none';
+            document.getElementById('form-cartao').reset();
+        };
+    }
+});
 
 // ============================================
 // VALIDAÇÃO DO MÉTODO DE PAGAMENTO
@@ -689,5 +864,79 @@ function verificarPagamentoAposRetorno() {
         
         // Limpar URL
         window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+// ============================================
+// FORMATAÇÃO DE CARTÃO E CPF
+// ============================================
+
+function formatCardNumber(value) {
+    let numbers = value.replace(/\D/g, "");
+    numbers = numbers.substring(0, 16);
+    let formatted = "";
+    for (let i = 0; i < numbers.length; i++) {
+        if (i > 0 && i % 4 === 0) formatted += " ";
+        formatted += numbers[i];
+    }
+    return formatted;
+}
+
+function formatExpiry(value) {
+    let numbers = value.replace(/\D/g, "");
+    if (numbers.length >= 2) {
+        return numbers.substring(0, 2) + "/" + numbers.substring(2, 4);
+    }
+    return numbers;
+}
+
+function formatCPF(value) {
+    let numbers = value.replace(/\D/g, "");
+    numbers = numbers.substring(0, 11);
+    if (numbers.length > 9) {
+        return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    } else if (numbers.length > 6) {
+        return numbers.replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
+    } else if (numbers.length > 3) {
+        return numbers.replace(/(\d{3})(\d{3})/, "$1.$2");
+    }
+    return numbers;
+}
+
+// ============================================
+// CALCULAR PARCELAS
+// ============================================
+
+function calcularParcelas(valor) {
+    const parcelas = [
+        { num: 1, taxa: 0, descricao: "1x sem juros" },
+        { num: 2, taxa: 2.5, descricao: "2x com juros de 2,5%" },
+        { num: 3, taxa: 3.5, descricao: "3x com juros de 3,5%" },
+        { num: 4, taxa: 4.5, descricao: "4x com juros de 4,5%" },
+        { num: 5, taxa: 5.5, descricao: "5x com juros de 5,5%" },
+        { num: 6, taxa: 6.5, descricao: "6x com juros de 6,5%" }
+    ];
+    
+    return parcelas.map(p => {
+        let valorParcela = valor;
+        if (p.taxa > 0) {
+            valorParcela = valor * (1 + p.taxa / 100);
+        }
+        const valorFormatado = (valorParcela / p.num).toFixed(2);
+        return {
+            num: p.num,
+            valor: valorFormatado,
+            descricao: `${p.num}x de R$ ${valorFormatado.replace('.', ',')} ${p.taxa > 0 ? '(com juros)' : '(sem juros)'}`
+        };
+    });
+}
+
+function atualizarParcelas(valor) {
+    const parcelas = calcularParcelas(valor);
+    const select = document.getElementById('installments');
+    if (select) {
+        select.innerHTML = parcelas.map(p => 
+            `<option value="${p.num}">${p.descricao}</option>`
+        ).join('');
     }
 }
