@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Resultado do Pagamento - Rifa Beneficente</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #2d5a4b 0%, #4a7c6b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 450px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+        
+        .status-success h1 { color: #2e7d64; }
+        .status-error h1 { color: #c44569; }
+        .status-pending h1 { color: #e6b12e; }
+        
+        .message {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        
+        .details {
+            background: #f5f5f5;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #2d5a4b;
+            color: white;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .btn:hover {
+            background: #1e3f34;
+            transform: scale(1.02);
+        }
+        
+        .countdown {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(45,90,75,0.2);
+            border-top-color: #2d5a4b;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="content">
+        <div id="loadingState" style="display: none;">
+            <div class="spinner"></div>
+            <p style="margin-top: 15px;">Processando informações do pagamento...</p>
+        </div>
+        <div id="resultState">
+            <!-- Conteúdo será preenchido via JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // URL do site principal (index.html)
+        const SITE_URL = window.location.href.replace('retorno.html', 'index.html');
+        
+        // Pega os parâmetros da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentSuccess = urlParams.get('payment_success');
+        const paymentId = urlParams.get('payment_id');
+        const paymentStatus = urlParams.get('payment_status');
+        const externalReference = urlParams.get('external_reference');
+        
+        // Elementos
+        const loadingState = document.getElementById('loadingState');
+        const resultState = document.getElementById('resultState');
+        
+        // Mostrar resultado baseado no status
+        function mostrarResultado() {
+            loadingState.style.display = 'none';
+            resultState.style.display = 'block';
+            
+            let icon = '';
+            let title = '';
+            let message = '';
+            let details = '';
+            let statusClass = '';
+            
+            if (paymentSuccess === 'true' || paymentStatus === 'approved') {
+                icon = '✅';
+                title = 'Pagamento Confirmado!';
+                message = 'Sua contribuição foi registrada com sucesso. Em breve você receberá um e-mail de confirmação.';
+                details = 'Seus números já estão reservados. Boa sorte no sorteio!';
+                statusClass = 'status-success';
+            } 
+            else if (paymentSuccess === 'false' || paymentStatus === 'failure') {
+                icon = '❌';
+                title = 'Falha no Pagamento';
+                message = 'Infelizmente não foi possível processar seu pagamento.';
+                details = 'Verifique os dados do seu cartão ou tente novamente mais tarde.';
+                statusClass = 'status-error';
+            }
+            else {
+                icon = '⏳';
+                title = 'Pagamento em Análise';
+                message = 'Seu pagamento está sendo processado.';
+                details = 'Você receberá um e-mail de confirmação assim que for aprovado.';
+                statusClass = 'status-pending';
+            }
+            
+            resultState.innerHTML = `
+                <div class="status-${statusClass.includes('success') ? 'success' : (statusClass.includes('error') ? 'error' : 'pending')}">
+                    <div class="icon">${icon}</div>
+                    <h1>${title}</h1>
+                    <div class="message">${message}</div>
+                    <div class="details">
+                        ${details ? `<p>${details}</p>` : ''}
+                        ${paymentId ? `<p style="margin-top: 10px; font-size: 12px;">ID da transação: ${paymentId}</p>` : ''}
+                    </div>
+                    <button class="btn" onclick="window.location.href='${SITE_URL}'">← Voltar para o site</button>
+                    <div class="countdown">Redirecionando em <span id="countdown">5</span> segundos...</div>
+                </div>
+            `;
+            
+            // Iniciar contagem regressiva
+            let seconds = 5;
+            const countdownEl = document.getElementById('countdown');
+            const interval = setInterval(() => {
+                seconds--;
+                if (countdownEl) countdownEl.textContent = seconds;
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    window.location.href = SITE_URL;
+                }
+            }, 1000);
+        }
+        
+        // Simular um pequeno delay para processamento
+        loadingState.style.display = 'block';
+        resultState.style.display = 'none';
+        
+        setTimeout(() => {
+            mostrarResultado();
+        }, 1000);
+        
+        // Se não houver parâmetros, redirecionar para o site principal
+        if (!paymentSuccess && !paymentStatus && !paymentId) {
+            setTimeout(() => {
+                window.location.href = SITE_URL;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

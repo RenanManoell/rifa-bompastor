@@ -834,12 +834,6 @@ footer p {
     color: var(--gray-600);
 }
 
-.modal-icon {
-    font-size: 48px;
-    text-align: center;
-    margin-bottom: 16px;
-}
-
 .modal h3 {
     font-size: 20px;
     font-weight: 600;
@@ -1192,4 +1186,120 @@ footer p {
     .modal-content {
         padding: 20px;
     }
+}
+
+/* Métodos de pagamento */
+.metodo-pagamento {
+    display: flex;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.metodo-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.metodo-option.selected {
+    border-color: var(--primary);
+    background: #f0f0ff;
+}
+
+.metodo-option input {
+    display: none;
+}
+
+.metodo-icon {
+    font-size: 20px;
+}
+
+/* Modal Cartão */
+.modal-content {
+    text-align: center;
+    padding: 20px;
+    font-size: 16px;
+    color: var(--primary);
+}
+
+/* Métodos de pagamento */
+.form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-600);
+    margin: 10px 0 5px;
+}
+
+.metodo-pagamento {
+    display: flex;
+    gap: 15px;
+    margin: 10px 0 20px;
+}
+
+.metodo-option {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 15px 10px;
+    border: 2px solid var(--gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--white);
+}
+
+.metodo-option:hover {
+    border-color: var(--primary-light);
+    background: var(--gray-50);
+}
+
+.metodo-option.selected {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(45,90,75,0.05), rgba(45,90,75,0.02));
+    box-shadow: 0 2px 8px rgba(45,90,75,0.1);
+}
+
+.metodo-option input {
+    display: none;
+}
+
+.metodo-icon {
+    font-size: 28px;
+}
+
+.metodo-option span:not(.metodo-icon) {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.metodo-desc {
+    font-size: 10px;
+    color: var(--gray-400);
+}
+
+/* Modal Cartão */
+#modal-cartao .modal-icon {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.cartao-status {
+    text-align: center;
+    padding: 20px;
+    font-size: 15px;
+    color: var(--primary);
+    background: var(--gray-50);
+    border-radius: 8px;
+    margin: 10px 0;
 }

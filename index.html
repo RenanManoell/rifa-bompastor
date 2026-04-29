@@ -155,7 +155,6 @@
     </div>
 
     <!-- ==================== MODAIS ==================== -->
-
     <!-- MODAL DADOS -->
     <div class="modal" id="modal-dados">
         <div class="modal-content modal-small">
@@ -165,7 +164,23 @@
                 <input type="text" id="nome" placeholder="Nome completo" class="input-field" required>
                 <input type="email" id="email" placeholder="E-mail" class="input-field" required>
                 <input type="tel" id="telefone" placeholder="WhatsApp (Ex: +55 15 99640-4616)" class="input-field phone-mask">
-                <button type="submit" id="btn-finalizar-pagamento" class="btn btn-primary btn-full">💳 Gerar pagamento PIX</button>
+                
+                <!-- MÉTODO DE PAGAMENTO - OBRIGATÓRIO -->
+                <div class="form-label">Escolha a forma de pagamento:</div>
+                <div class="metodo-pagamento">
+                    <label class="metodo-option">
+                        <input type="radio" name="metodo" value="pix">
+                        <span class="metodo-icon">📱</span>
+                        <span>PIX</span>
+                    </label>
+                    <label class="metodo-option">
+                        <input type="radio" name="metodo" value="cartao">
+                        <span class="metodo-icon">💳</span>
+                        <span>Cartão de Crédito</span>
+                    </label>
+                </div>
+                
+                <button type="submit" id="btn-finalizar-pagamento" class="btn btn-primary btn-full">💳 Gerar pagamento</button>
             </form>
             <div id="loading"></div>
         </div>
@@ -188,6 +203,19 @@
                 <span class="status-icon">⏳</span> Aguardando pagamento...
             </div>
             <button id="verificar-pagamento" class="btn btn-outline btn-full">Verificar pagamento</button>
+        </div>
+    </div>
+
+    <!-- MODAL CARTÃO -->
+    <div class="modal" id="modal-cartao">
+        <div class="modal-content modal-small">
+            <button class="modal-close" id="close-cartao">&times;</button>
+            <div class="modal-icon">💳</div>
+            <h3>Pagamento com Cartão</h3>
+            <div class="cartao-status" id="cartao-status">
+                ⏳ Redirecionando para o ambiente seguro do Mercado Pago...
+            </div>
+            <div id="cartao-resultado"></div>
         </div>
     </div>
 
