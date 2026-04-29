@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Admin - Rifa Beneficente</title>
+    <link rel="stylesheet" href="admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <!-- LOADING -->
+    <div class="global-loading" id="globalLoading">
+        <div class="global-loading-content">
+            <div class="global-spinner"></div>
+            <p>Carregando dados...</p>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="admin-container">
+        <!-- CABEÇALHO -->
+        <header class="admin-header">
+            <div class="logo-area">
+                <img src="assets/logo.png" alt="Seu Bom Pastor" class="logo">
+            </div>
+            <div class="header-text">
+                <h1>Painel Administrativo</h1>
+                <p>Rifa Beneficente - Casa de Espiritualidade Seu Bom Pastor</p>
+            </div>
+            <button id="btn-sair" class="btn-sair">Sair</button>
+        </header>
+
+        <!-- TABS -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+            <button class="tab-btn" data-tab="vendas">💰 Vendas</button>
+            <button class="tab-btn" data-tab="numeros">🔢 Gerenciar Números</button>
+            <button class="tab-btn" data-tab="config">⚙️ Configurações</button>
+        </div>
+
+        <!-- TAB DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content active">
+            <!-- CARDS -->
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">🎫</div>
+                    <div class="card-info">
+                        <span class="card-value" id="total-numeros">0</span>
+                        <span class="card-label">Total de Números</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">✅</div>
+                    <div class="card-info">
+                        <span class="card-value" id="disponiveis">0</span>
+                        <span class="card-label">Disponíveis</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">💰</div>
+                    <div class="card-info">
+                        <span class="card-value" id="vendidos">0</span>
+                        <span class="card-label">Vendidos</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <div class="card-info">
+                        <span class="card-value" id="percentual">0%</span>
+                        <span class="card-label">Mês das Mães</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS -->
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3>Progresso de Vendas</h3>
+                    <canvas id="progressChart" width="400" height="300"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Últimas Vendas</h3>
+                    <div id="ultimas-vendas-chart" class="vendas-list"></div>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3>Arrecadação</h3>
+                    <canvas id="arrecadacaoChart" width="400" height="300"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Top Contribuintes</h3>
+                    <div id="top-contribuintes" class="top-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB VENDAS -->
+        <div id="tab-vendas" class="tab-content">
+            <div class="vendas-controls">
+                <div class="search-box">
+                    <input type="text" id="buscar-venda" placeholder="Buscar por número ou nome..." class="input-field">
+                </div>
+                <button id="btn-exportar" class="btn-secondary">📥 Exportar CSV</button>
+                <button id="btn-refresh" class="btn-outline">🔄 Atualizar</button>
+            </div>
+            
+            <div class="vendas-table-container">
+                <table class="vendas-table">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Comprador</th>
+                            <th>E-mail</th>
+                            <th>Telefone</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendas-tbody">
+                        <tr><td colspan="7" style="text-align:center">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB GERENCIAR NÚMEROS -->
+        <div id="tab-numeros" class="tab-content">
+            <div class="admin-section">
+                <h3>➕ Venda Manual</h3>
+                <div class="form-row">
+                    <input type="number" id="venda-numero" placeholder="Número" class="input-field">
+                    <input type="text" id="venda-nome" placeholder="Nome completo" class="input-field">
+                    <input type="email" id="venda-email" placeholder="E-mail" class="input-field">
+                    <input type="tel" id="venda-telefone" placeholder="Telefone" class="input-field">
+                    <button id="btn-vender-manual" class="btn-primary">Registrar Venda</button>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h3>🔍 Buscar Número</h3>
+                <div class="form-row">
+                    <input type="number" id="buscar-numero" placeholder="Número" class="input-field">
+                    <button id="btn-buscar" class="btn-outline">Buscar</button>
+                </div>
+                <div id="resultado-busca" class="search-result"></div>
+            </div>
+
+            <div class="admin-section">
+                <h3>📋 Matriz de Números</h3>
+                <div class="matriz-grid" id="matriz-numeros">
+                    <div class="loading-grid">Carregando...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONFIGURAÇÕES -->
+        <div id="tab-config" class="tab-content">
+            <div class="admin-section">
+                <h3>⚙️ Configurações da Rifa</h3>
+                <div class="form-group">
+                    <label>Valor do Bilhete (R$)</label>
+                    <input type="number" id="config-valor" step="0.01" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label>Data do Sorteio</label>
+                    <input type="date" id="config-data" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label>Total de Números</label>
+                    <input type="number" id="config-total" class="input-field">
+                </div>
+                <button id="btn-salvar-config" class="btn-primary">Salvar Configurações</button>
+            </div>
+            
+            <div class="admin-section">
+                <h3>📈 Estatísticas Rápidas</h3>
+                <div class="stats-mini">
+                    <div class="stat-mini">
+                        <span class="stat-mini-value" id="stat-arrecadado">R$ 0</span>
+                        <span>Arrecadado Total</span>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="stat-mini-value" id="stat-media">R$ 0</span>
+                        <span>Ticket Médio</span>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="stat-mini-value" id="stat-pendentes">0</span>
+                        <span>Pagamentos Pendentes</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RODAPÉ -->
+        <footer class="admin-footer">
+            <p>Casa de Espiritualidade Seu Bom Pastor - Painel Administrativo</p>
+        </footer>
+    </div>
+
+    <!-- MODAL CONFIRMAÇÃO -->
+    <div class="modal" id="modal-confirmacao">
+        <div class="modal-content modal-small">
+            <button class="modal-close" id="close-confirmacao">&times;</button>
+            <div class="modal-icon">⚠️</div>
+            <h3>Confirmar Venda</h3>
+            <p id="confirmacao-mensagem"></p>
+            <div class="modal-buttons">
+                <button id="confirmar-sim" class="btn-primary">Confirmar</button>
+                <button id="confirmar-nao" class="btn-outline">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

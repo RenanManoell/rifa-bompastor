@@ -4,7 +4,7 @@
 // ============================================
 
 const API_URL = "https://script.google.com/macros/s/AKfycbw6bLdf_Rt45EXOmaRJrDQZ-kyoc-gQ7HJarDA6uUvAf-mHVBSwvCWcLpvcCyCqez6J/exec";
-const ADMIN_SENHA = "bompastor2024";
+
 
 // Estado global
 let numerosDisponiveis = [];
@@ -285,8 +285,10 @@ function atualizarCarrinhoUI() {
         return;
     }
     
-    const valorBilhete = parseFloat(document.getElementById('valor-bilhete').innerHTML.replace('R$', '').replace(',', '.')) || 10;
+    const valorBilhete = parseFloat(document.getElementById('valor-bilhete').innerHTML.replace('R$&nbsp;', '').replace(',', '.')) || 10;
     const total = qtd * valorBilhete;
+    console.log(document.getElementById('valor-bilhete').innerHTML);
+    console.log(valorBilhete);
     
     let itensHtml = '';
     for (const num of carrinho) {
@@ -312,41 +314,6 @@ function formatarMoeda(valor) {
 // ============================================
 
 function configurarEventos() {
-    // Admin
-    document.getElementById('btn-admin').onclick = () => {
-        document.getElementById('modal-admin-login').style.display = 'flex';
-    };
-    
-    document.getElementById('close-admin-login').onclick = () => {
-        document.getElementById('modal-admin-login').style.display = 'none';
-        document.getElementById('admin-senha').value = '';
-    };
-    
-    document.getElementById('btn-login-admin').onclick = () => {
-        const senha = document.getElementById('admin-senha').value;
-        if (senha === ADMIN_SENHA) {
-            document.getElementById('modal-admin-login').style.display = 'none';
-            abrirPainelAdmin();
-        } else {
-            showToast("Senha incorreta", "error");
-        }
-    };
-    
-    document.getElementById('close-admin-panel').onclick = () => {
-        document.getElementById('modal-admin-panel').style.display = 'none';
-    };
-    
-    document.getElementById('refresh-admin').onclick = () => {
-        carregarDadosAdmin();
-    };
-    
-    document.getElementById('btn-buscar').onclick = () => {
-        buscarNumeroAdmin();
-    };
-    
-    document.getElementById('btn-vender-manual').onclick = () => {
-        venderNumeroManual();
-    };
     
     // Compra
     document.getElementById('close-dados').onclick = () => {
@@ -396,160 +363,6 @@ function configurarEventos() {
 }
 
 // ============================================
-// ADMIN
-// ============================================
-
-async function abrirPainelAdmin() {
-    document.getElementById('modal-admin-panel').style.display = 'flex';
-    await carregarDadosAdmin();
-}
-
-async function carregarDadosAdmin() {
-    showLoading(true);
-    try {
-        const response = await fetch(`${API_URL}?action=getRifaInfo`);
-        const result = await response.json();
-        
-        if (result.success) {
-            const data = result.data;
-            const total = data.total_numeros || 100;
-            const vendidos = data.vendidos || 0;
-            const disponiveis = data.disponiveis || 0;
-            const valor = data.valor_bilhete || 10;
-            
-            document.getElementById('admin-total').textContent = total;
-            document.getElementById('admin-disponiveis').textContent = disponiveis;
-            document.getElementById('admin-vendidos').textContent = vendidos;
-            document.getElementById('admin-arrecadado').textContent = formatarMoeda(vendidos * valor);
-        }
-        
-        await carregarUltimasVendas();
-    } catch (error) {
-        console.error(error);
-        showToast("Erro ao carregar dados admin", "error");
-    } finally {
-        showLoading(false);
-    }
-}
-
-async function carregarUltimasVendas() {
-    try {
-        const response = await fetch(`${API_URL}?action=getNumbers`);
-        const result = await response.json();
-        
-        if (result.success) {
-            const ocupados = result.ocupados || [];
-            const ultimas = ocupados.slice(-10).reverse();
-            
-            const container = document.getElementById('ultimas-vendas-lista');
-            if (ultimas.length === 0) {
-                container.innerHTML = '<div class="cart-empty">Nenhuma venda registrada</div>';
-            } else {
-                let html = '';
-                for (const venda of ultimas) {
-                    html += `
-                        <div class="sale-item">
-                            <span class="sale-number">Nº ${venda.numero}</span>
-                            <span class="sale-buyer">${venda.comprador || 'Desconhecido'}</span>
-                            <span style="color:${venda.status === 'pago' ? '#2e7d64' : '#e6b12e'}; font-size:11px;">
-                                ${venda.status === 'pago' ? '✓ Pago' : '⏳ Pendente'}
-                            </span>
-                        </div>
-                    `;
-                }
-                container.innerHTML = html;
-            }
-        }
-    } catch (error) {
-        console.error(error);
-    }
-}
-
-async function buscarNumeroAdmin() {
-    const numero = document.getElementById('buscar-numero').value;
-    if (!numero) {
-        showToast("Digite um número para buscar", "warning");
-        return;
-    }
-    
-    showLoading(true);
-    try {
-        const response = await fetch(`${API_URL}?action=getNumbers`);
-        const result = await response.json();
-        
-        if (result.success) {
-            const disponiveis = result.disponiveis || [];
-            const ocupados = result.ocupados || [];
-            
-            const disponivel = disponiveis.includes(parseInt(numero));
-            const ocupado = ocupados.find(o => o.numero == numero);
-            
-            const resultadoDiv = document.getElementById('resultado-busca');
-            resultadoDiv.style.display = 'block';
-            
-            if (disponivel) {
-                resultadoDiv.innerHTML = `<span style="color:#2e7d64;">✓ Número ${numero} está disponível para venda</span>`;
-                resultadoDiv.style.background = "#e8f3ef";
-            } else if (ocupado) {
-                resultadoDiv.innerHTML = `<span style="color:#c44569;">✗ Número ${numero} vendido para ${ocupado.comprador || 'desconhecido'}</span>`;
-                resultadoDiv.style.background = "#fdefef";
-            } else {
-                resultadoDiv.innerHTML = `<span style="color:#e6b12e;">⚠ Número ${numero} não encontrado</span>`;
-                resultadoDiv.style.background = "#fef5e6";
-            }
-        }
-    } catch (error) {
-        console.error(error);
-        showToast("Erro ao buscar número", "error");
-    } finally {
-        showLoading(false);
-    }
-}
-
-async function venderNumeroManual() {
-    const numero = document.getElementById('venda-numero').value;
-    const nome = document.getElementById('venda-nome').value;
-    const email = document.getElementById('venda-email').value;
-    const telefone = document.getElementById('venda-telefone').value;
-    
-    if (!numero || !nome || !email) {
-        showToast("Preencha número, nome e e-mail", "warning");
-        return;
-    }
-    
-    const btn = document.getElementById('btn-vender-manual');
-    disableButton(btn, true);
-    showLoading(true);
-    
-    try {
-        const url = `${API_URL}?action=createPayment&numero=${numero}&comprador=${encodeURIComponent(nome)}&email=${encodeURIComponent(email)}&telefone=${encodeURIComponent(telefone)}`;
-        const response = await fetch(url);
-        const result = await response.json();
-        
-        if (result.success) {
-            showToast(`Venda do número ${numero} registrada para ${nome}`, "success");
-            
-            document.getElementById('venda-numero').value = '';
-            document.getElementById('venda-nome').value = '';
-            document.getElementById('venda-email').value = '';
-            document.getElementById('venda-telefone').value = '';
-            
-            await carregarDadosAdmin();
-            await carregarNumeros();
-            await carregarInformacoesRifa();
-        } else {
-            showToast(result.error || "Erro ao registrar venda", "error");
-        }
-    } catch (error) {
-        console.error(error);
-        showToast("Erro de conexão", "error");
-    } finally {
-        disableButton(btn, false, "Registrar venda");
-        showLoading(false);
-    }
-}
-
-// ============================================
 // PAGAMENTO PIX
 // ============================================
 
@@ -575,7 +388,7 @@ async function processarPagamentoMultiplo() {
     showLoading(true);
     
     try {
-        const valorBilhete = parseFloat(document.getElementById('valor-bilhete').innerHTML.replace('R$', '').replace(',', '.')) || 10;
+        const valorBilhete = parseFloat(document.getElementById('valor-bilhete').innerHTML.replace('R$&nbsp;', '').replace(',', '.')) || 10;
         const valorTotal = carrinho.length * valorBilhete;
         
         const numerosStr = carrinho.join(',');
@@ -620,14 +433,23 @@ function iniciarVerificacaoAutomatica() {
 }
 
 async function verificarStatusPagamento() {
-    if (!currentPaymentId) return;
+    if (!currentPaymentId) {
+        console.log("Sem paymentId para verificar");
+        return;
+    }
+    
+    console.log(`Verificando pagamento: ${currentPaymentId}`);
     
     try {
         const response = await fetch(`${API_URL}?action=checkPayment&paymentId=${currentPaymentId}`);
         const result = await response.json();
         
+        console.log("Resultado da verificação:", result);
+        
         if (result.success) {
             const statusDiv = document.getElementById('status-pagamento');
+            
+            // VERIFICAR SE É APENAS "pendente" ou se realmente está "aprovado"
             if (result.status === 'aprovado' || result.status === 'approved') {
                 statusDiv.innerHTML = '<span class="status-icon">✓</span> Pagamento confirmado! Números reservados.';
                 statusDiv.style.background = "#e8f3ef";
@@ -641,12 +463,22 @@ async function verificarStatusPagamento() {
                     document.getElementById('modal-pix').style.display = 'none';
                     carregarNumeros();
                     carregarInformacoesRifa();
+                    currentPaymentId = null;
                 }, 3000);
-            } else if (result.status === 'pendente') {
-                statusDiv.innerHTML = '<span class="status-icon">⏳</span> Aguardando pagamento...';
-            } else {
+            } 
+            else if (result.status === 'pendente' || result.status === 'reservado') {
+                statusDiv.innerHTML = '<span class="status-icon">⏳</span> Aguardando pagamento... Escaneie o QR Code ou copie o código PIX.';
+                statusDiv.style.background = "#fff8e1";
+                statusDiv.style.color = "#b76e2e";
+            }
+            else if (result.status === 'pending') {
+                statusDiv.innerHTML = '<span class="status-icon">⏳</span> Pagamento pendente. Aguardando confirmação do banco...';
+            }
+            else {
                 statusDiv.innerHTML = `<span class="status-icon">ℹ</span> Status: ${result.status}`;
             }
+        } else {
+            console.error("Erro na verificação:", result.error);
         }
     } catch (error) {
         console.error("Erro ao verificar pagamento:", error);
@@ -668,3 +500,167 @@ function verificarPagamentoAposRetorno() {
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
+
+// ============================================
+// TIMEOUT DE 5 MINUTOS
+// ============================================
+
+let timerTimeout = null;
+let tempoRestante = 300; // 5 minutos em segundos
+
+function iniciarTimerPagamento() {
+    if (timerTimeout) clearInterval(timerTimeout);
+    
+    tempoRestante = 300; // 5 minutos
+    const statusDiv = document.getElementById('status-pagamento');
+    
+    timerTimeout = setInterval(() => {
+        if (tempoRestante <= 0) {
+            clearInterval(timerTimeout);
+            statusDiv.innerHTML = '<span class="status-icon">⏰</span> Tempo esgotado! Pagamento cancelado.';
+            statusDiv.style.background = "#fdefef";
+            statusDiv.style.color = "#c44569";
+            mostrarToast("Tempo para pagamento expirou! Os números voltaram a ficar disponíveis.", "warning");
+            
+            setTimeout(() => {
+                document.getElementById('modal-pix').style.display = 'none';
+                carregarNumeros();
+                carregarInformacoesRifa();
+            }, 3000);
+        } else {
+            const minutos = Math.floor(tempoRestante / 60);
+            const segundos = tempoRestante % 60;
+            statusDiv.innerHTML = `<span class="status-icon">⏳</span> Aguardando pagamento... ${minutos}:${segundos.toString().padStart(2, '0')} restantes`;
+            tempoRestante--;
+        }
+    }, 1000);
+}
+
+// Modificar a função processarPagamentoMultiplo para iniciar o timer
+async function processarPagamentoMultiplo() {
+    const nome = document.getElementById('nome').value.trim();
+    const email = document.getElementById('email').value.trim();
+    let telefone = document.getElementById('telefone').value.trim();
+    
+    if (!nome || !email) {
+        mostrarToast("Preencha nome e e-mail", "warning");
+        return;
+    }
+    
+    telefone = telefone.replace(/\D/g, "");
+    
+    const btn = document.getElementById('btn-finalizar-pagamento');
+    disableButton(btn, true);
+    showLoading(true);
+    
+    try {
+        const valorBilhete = parseFloat(document.getElementById('valor-bilhete').innerHTML.replace('R$&nbsp;', '').replace(',', '.')) || 10;
+        const valorTotal = carrinho.length * valorBilhete;
+        
+        const numerosStr = carrinho.join(',');
+        const url = `${API_URL}?action=createMultiPayment&numeros=${encodeURIComponent(numerosStr)}&comprador=${encodeURIComponent(nome)}&email=${encodeURIComponent(email)}&telefone=${encodeURIComponent(telefone)}&metodo=pix&valor_total=${valorTotal}`;
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success) {
+            currentPaymentId = result.paymentId;
+            document.getElementById('modal-dados').style.display = 'none';
+            document.getElementById('form-dados').reset();
+            
+            document.getElementById('qr-code').src = `data:image/png;base64,${result.pixCode}`;
+            document.getElementById('pix-code').textContent = result.pixQrCode || result.pixCode;
+            document.getElementById('valor-pagar-pix').textContent = formatarMoeda(result.valor_total);
+            document.getElementById('modal-pix').style.display = 'flex';
+            
+            // INICIAR TIMER DE 5 MINUTOS
+            iniciarTimerPagamento();
+            
+            carrinho = [];
+            atualizarCarrinhoUI();
+            renderizarNumeros();
+            
+            mostrarToast(`Pagamento gerado! Você tem 5 minutos para pagar. Total: ${formatarMoeda(result.valor_total)}`, "success");
+            iniciarVerificacaoAutomatica();
+        } else {
+            mostrarToast(result.error || "Erro ao processar pagamento", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarToast("Erro de conexão. Tente novamente.", "error");
+    } finally {
+        disableButton(btn, false, "💳 Gerar pagamento PIX");
+        showLoading(false);
+    }
+}
+
+// Modificar a função verificarStatusPagamento para parar o timer quando pagar
+async function verificarStatusPagamento() {
+    if (!currentPaymentId) return;
+    
+    try {
+        const response = await fetch(`${API_URL}?action=checkPayment&paymentId=${currentPaymentId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const statusDiv = document.getElementById('status-pagamento');
+            
+            if (result.status === 'approved' || result.status === 'aprovado') {
+                // PARAR O TIMER
+                if (timerTimeout) clearInterval(timerTimeout);
+                
+                statusDiv.innerHTML = '<span class="status-icon">✓</span> Pagamento confirmado! Números reservados.';
+                statusDiv.style.background = "#e8f3ef";
+                statusDiv.style.color = "#2e7d64";
+                
+                mostrarToast("Pagamento confirmado! Obrigado pela contribuição!", "success");
+                
+                if (checkInterval) clearInterval(checkInterval);
+                
+                setTimeout(() => {
+                    document.getElementById('modal-pix').style.display = 'none';
+                    carregarNumeros();
+                    carregarInformacoesRifa();
+                    currentPaymentId = null;
+                }, 3000);
+            } 
+            else if (result.status === 'cancelled' || result.status === 'cancelado') {
+                if (timerTimeout) clearInterval(timerTimeout);
+                statusDiv.innerHTML = '<span class="status-icon">✗</span> Pagamento cancelado.';
+                statusDiv.style.background = "#fdefef";
+                statusDiv.style.color = "#c44569";
+                
+                setTimeout(() => {
+                    document.getElementById('modal-pix').style.display = 'none';
+                    carregarNumeros();
+                    carregarInformacoesRifa();
+                }, 2000);
+            }
+            else if (result.status === 'pending') {
+                // O timer já está rodando, não precisa fazer nada
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao verificar pagamento:", error);
+    }
+}
+
+// Função para cancelar pagamentos expirados (chamar a cada minuto)
+async function verificarPagamentosExpirados() {
+    try {
+        const response = await fetch(`${API_URL}?action=cancelExpiredPayments`);
+        const result = await response.json();
+        if (result.success && result.cancelados > 0) {
+            console.log(`${result.cancelados} pagamentos expirados cancelados`);
+            await carregarNumeros();
+            await carregarInformacoesRifa();
+        }
+    } catch (error) {
+        console.error("Erro ao verificar pagamentos expirados:", error);
+    }
+}
+
+// Chamar verificação de expirados a cada minuto
+setInterval(() => {
+    verificarPagamentosExpirados();
+}, 60000); // 1 minuto
