@@ -593,7 +593,6 @@ function iniciarMercadoPago() {
         });
     }
 }
-
 async function processarPagamentoCartao() {
     const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
     const cardExpiry = document.getElementById('cardExpiry').value;
@@ -602,11 +601,35 @@ async function processarPagamentoCartao() {
     const cardDocument = document.getElementById('cardDocument').value.replace(/\D/g, '');
     const installments = parseInt(document.getElementById('installments').value);
     
-    // Validações...
+    // Validações
     if (!cardNumber || cardNumber.length < 13) {
         showToast("Número do cartão inválido", "warning");
         return;
     }
+    
+    if (!cardExpiry || !cardExpiry.includes('/')) {
+        showToast("Data de validade inválida (MM/AA)", "warning");
+        return;
+    }
+    
+    if (!cardCvv || cardCvv.length < 3) {
+        showToast("CVV inválido", "warning");
+        return;
+    }
+    
+    if (!cardHolder) {
+        showToast("Nome do titular é obrigatório", "warning");
+        return;
+    }
+    
+    if (!cardDocument || cardDocument.length !== 11) {
+        showToast("CPF inválido (11 dígitos)", "warning");
+        return;
+    }
+    
+    // DETECTAR BANDEIRA DO CARTÃO
+    const bandeira = detectarBandeira(cardNumber);
+    console.log("Bandeira detectada:", bandeira);
     
     const [expMonth, expYear] = cardExpiry.split('/');
     
@@ -640,8 +663,8 @@ async function processarPagamentoCartao() {
         
         console.log("Token gerado:", token);
         
-        // USAR GET EM VEZ DE POST (evita CORS)
-        const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${token}&installments=${installments}&payment_method_id=visa`;
+        // Enviar com a bandeira correta
+        const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${token}&installments=${installments}&payment_method_id=${bandeira}`;
         
         const response = await fetch(url);
         const result = await response.json();
@@ -649,11 +672,31 @@ async function processarPagamentoCartao() {
         if (result.success) {
             showToast("✅ Pagamento aprovado! Enviando e-mail de confirmação...", "success");
             
+            // Mostrar sucesso no modal
+            const modalContent = document.querySelector('#modal-cartao .modal-content');
+            const formContainer = document.getElementById('form-cartao');
+            const loadingContainer = document.getElementById('cartao-loading');
+            
+            if (formContainer) formContainer.style.display = 'none';
+            if (loadingContainer) loadingContainer.style.display = 'none';
+            
+            const successDiv = document.createElement('div');
+            successDiv.className = 'status-confirmado';
+            successDiv.innerHTML = `
+                <span style="font-size: 48px;">✅</span>
+                <h3>Pagamento Confirmado!</h3>
+                <p>Enviamos um e-mail de confirmação.</p>
+                <p style="margin-top: 10px;">Agradecemos sua contribuição!</p>
+            `;
+            modalContent.appendChild(successDiv);
+            
             setTimeout(() => {
                 document.getElementById('modal-cartao').style.display = 'none';
                 carregarNumeros();
                 carregarInformacoesRifa();
                 currentPaymentId = null;
+                successDiv.remove();
+                if (formContainer) formContainer.style.display = 'block';
             }, 4000);
         } else {
             showToast(result.error || "Erro ao processar pagamento", "error");
@@ -668,6 +711,35 @@ async function processarPagamentoCartao() {
     } finally {
         btn.disabled = false;
     }
+}
+
+// Função para detectar a bandeira do cartão
+function detectarBandeira(cardNumber) {
+    const num = cardNumber.replace(/\s/g, '');
+    const firstDigit = num.charAt(0);
+    const firstTwo = num.substring(0, 2);
+    const firstFour = num.substring(0, 4);
+    
+    // Visa
+    if (firstDigit === '4') return 'visa';
+    
+    // Mastercard
+    if (firstTwo >= '51' && firstTwo <= '55') return 'master';
+    if (firstTwo >= '22' && firstTwo <= '27') return 'master';
+    
+    // American Express
+    if (firstTwo === '34' || firstTwo === '37') return 'amex';
+    
+    // Elo
+    if (firstFour === '4011' || firstFour === '4389' || firstFour === '4514' || firstFour === '5045') return 'elo';
+    if (firstTwo === '50' || firstTwo === '52' || firstTwo === '53' || firstTwo === '54' || firstTwo === '55') return 'elo';
+    if (firstTwo === '63' || firstTwo === '64') return 'elo';
+    
+    // Hipercard
+    if (firstTwo === '38' || firstTwo === '60') return 'hipercard';
+    
+    // Padrão
+    return 'visa';
 }
 
 // Eventos de máscara para o formulário de cartão
