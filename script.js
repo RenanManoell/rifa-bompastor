@@ -585,8 +585,7 @@ async function processarPagamentoMultiplo() {
 
 function iniciarMercadoPago() {
     // Public Key do Mercado Pago (coloque a sua)
-    // const publicKey = 'APP_USR-5f9067e1-6b8d-4ad6-8be5-e45da73b1660';
-    const publicKey = 'TEST-c610c49f-132a-40ff-873a-52fa6f0a0134';
+    const publicKey = 'APP_USR-5f9067e1-6b8d-4ad6-8be5-e45da73b1660';
     
     if (!mp) {
         mp = new MercadoPago(publicKey, {
@@ -603,29 +602,9 @@ async function processarPagamentoCartao() {
     const cardDocument = document.getElementById('cardDocument').value.replace(/\D/g, '');
     const installments = parseInt(document.getElementById('installments').value);
     
-    // Validações
+    // Validações...
     if (!cardNumber || cardNumber.length < 13) {
         showToast("Número do cartão inválido", "warning");
-        return;
-    }
-    
-    if (!cardExpiry || !cardExpiry.includes('/')) {
-        showToast("Data de validade inválida (MM/AA)", "warning");
-        return;
-    }
-    
-    if (!cardCvv || cardCvv.length < 3) {
-        showToast("CVV inválido", "warning");
-        return;
-    }
-    
-    if (!cardHolder) {
-        showToast("Nome do titular é obrigatório", "warning");
-        return;
-    }
-    
-    if (!cardDocument || cardDocument.length !== 11) {
-        showToast("CPF inválido (11 dígitos)", "warning");
         return;
     }
     
@@ -640,10 +619,9 @@ async function processarPagamentoCartao() {
     loading.style.display = 'block';
     
     try {
-        // Inicializar Mercado Pago se necessário
         iniciarMercadoPago();
         
-        // Criar card token usando o método correto do SDK
+        // Gerar token do cartão
         const cardToken = await mp.createCardToken({
             cardNumber: cardNumber,
             cardholderName: cardHolder,
@@ -654,7 +632,6 @@ async function processarPagamentoCartao() {
             expirationYear: expYear
         });
         
-        // Aguardar o token ser gerado
         const token = cardToken.id;
         
         if (!token) {
@@ -663,50 +640,20 @@ async function processarPagamentoCartao() {
         
         console.log("Token gerado:", token);
         
-        // Enviar token para o backend
-        const response = await fetch(`${API_URL}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'processCardPayment',
-                paymentId: currentPaymentId,
-                token: token,
-                installments: installments,
-                payment_method_id: 'visa'
-            })
-        });
+        // USAR GET EM VEZ DE POST (evita CORS)
+        const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${token}&installments=${installments}&payment_method_id=visa`;
         
+        const response = await fetch(url);
         const result = await response.json();
         
         if (result.success) {
             showToast("✅ Pagamento aprovado! Enviando e-mail de confirmação...", "success");
-            
-            // Mostrar mensagem de sucesso no modal
-            const modalContent = document.querySelector('#modal-cartao .modal-content');
-            const formContainer = document.getElementById('form-cartao');
-            const loadingContainer = document.getElementById('cartao-loading');
-            
-            if (formContainer) formContainer.style.display = 'none';
-            if (loadingContainer) loadingContainer.style.display = 'none';
-            
-            const successDiv = document.createElement('div');
-            successDiv.className = 'status-confirmado';
-            successDiv.innerHTML = `
-                <span style="font-size: 48px;">✅</span>
-                <h3>Pagamento Confirmado!</h3>
-                <p>Enviamos um e-mail de confirmação.</p>
-                <p style="margin-top: 10px;">Agradecemos sua contribuição!</p>
-            `;
-            modalContent.appendChild(successDiv);
             
             setTimeout(() => {
                 document.getElementById('modal-cartao').style.display = 'none';
                 carregarNumeros();
                 carregarInformacoesRifa();
                 currentPaymentId = null;
-                // Remover a div de sucesso
-                successDiv.remove();
-                if (formContainer) formContainer.style.display = 'block';
             }, 4000);
         } else {
             showToast(result.error || "Erro ao processar pagamento", "error");
