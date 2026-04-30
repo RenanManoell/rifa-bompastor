@@ -640,20 +640,18 @@ async function processarPagamentoCartao() {
     try {
         iniciarMercadoPago();
         
-        // CORREÇÃO: Criar token com os parâmetros corretos
-        const cardToken = await mp.fields.createCardToken({
+        // MÉTODO CORRETO: Criar token diretamente
+        const cardToken = await mp.createCardToken({
             cardNumber: cardNumber,
             cardholderName: cardHolder,
             identificationType: 'CPF',
             identificationNumber: cardDocument,
             securityCode: cardCvv,
-            expirationMonth: expMonth,
-            expirationYear: expYear
+            expirationMonth: parseInt(expMonth),
+            expirationYear: parseInt(expYear)
         });
         
-        // Aguardar o token ser gerado
-        const token = await cardToken.getToken();
-        const tokenId = token.id;
+        const tokenId = cardToken.id;
         
         if (!tokenId) {
             throw new Error("Não foi possível gerar o token do cartão");
@@ -661,7 +659,7 @@ async function processarPagamentoCartao() {
         
         console.log("Token gerado:", tokenId);
         
-        // Enviar para o backend (SEM payment_method_id - o MP detecta automaticamente)
+        // Enviar para o backend
         const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${tokenId}&installments=${installments}`;
         
         const response = await fetch(url);
@@ -694,6 +692,7 @@ async function processarPagamentoCartao() {
                 currentPaymentId = null;
                 successDiv.remove();
                 if (formContainer) formContainer.style.display = 'block';
+                if (loadingContainer) loadingContainer.style.display = 'none';
             }, 4000);
         } else {
             showToast(result.error || "Erro ao processar pagamento", "error");
