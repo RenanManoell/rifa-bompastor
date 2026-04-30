@@ -627,10 +627,6 @@ async function processarPagamentoCartao() {
         return;
     }
     
-    // DETECTAR BANDEIRA DO CARTÃO
-    const bandeira = detectarBandeira(cardNumber);
-    console.log("Bandeira detectada:", bandeira);
-    
     const [expMonth, expYear] = cardExpiry.split('/');
     
     const btn = document.getElementById('btn-pagar-cartao');
@@ -644,8 +640,8 @@ async function processarPagamentoCartao() {
     try {
         iniciarMercadoPago();
         
-        // Gerar token do cartão
-        const cardToken = await mp.createCardToken({
+        // CORREÇÃO: Criar token com os parâmetros corretos
+        const cardToken = await mp.fields.createCardToken({
             cardNumber: cardNumber,
             cardholderName: cardHolder,
             identificationType: 'CPF',
@@ -655,16 +651,18 @@ async function processarPagamentoCartao() {
             expirationYear: expYear
         });
         
-        const token = cardToken.id;
+        // Aguardar o token ser gerado
+        const token = await cardToken.getToken();
+        const tokenId = token.id;
         
-        if (!token) {
+        if (!tokenId) {
             throw new Error("Não foi possível gerar o token do cartão");
         }
         
-        console.log("Token gerado:", token);
+        console.log("Token gerado:", tokenId);
         
-        // Enviar com a bandeira correta
-        const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${token}&installments=${installments}&payment_method_id=${bandeira}`;
+        // Enviar para o backend (SEM payment_method_id - o MP detecta automaticamente)
+        const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${tokenId}&installments=${installments}`;
         
         const response = await fetch(url);
         const result = await response.json();
@@ -672,7 +670,6 @@ async function processarPagamentoCartao() {
         if (result.success) {
             showToast("✅ Pagamento aprovado! Enviando e-mail de confirmação...", "success");
             
-            // Mostrar sucesso no modal
             const modalContent = document.querySelector('#modal-cartao .modal-content');
             const formContainer = document.getElementById('form-cartao');
             const loadingContainer = document.getElementById('cartao-loading');
