@@ -987,7 +987,7 @@ function atualizarParcelas(valor) {
 let currentAmountCartao = 0;
 
 function iniciarCardForm() {
-    const mp = new MercadoPago('APP_USR-5f9067e1-6b8d-4ad6-8be5-e45da73b1660', {
+    const mp = new MercadoPago('APP_USR-bad76689-52b4-4d3b-8e7c-a6dc24b8282e', {
         locale: 'pt-BR'
     });
     
