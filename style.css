@@ -1303,3 +1303,25 @@ footer p {
     border-radius: 8px;
     margin: 10px 0;
 }
+
+/* CardForm containers */
+.card-container {
+    height: 45px;
+    display: block;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    background: white;
+}
+
+.card-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Modal large */
+.modal-large {
+    max-width: 500px;
+}

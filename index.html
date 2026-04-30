@@ -209,51 +209,30 @@
         </div>
     </div>
 
-    <!-- MODAL CARTÃO - CHECKOUT TRANSPARENTE -->
+    <!-- MODAL CARTÃO - CHECKOUT TRANSPARENTE (CardForm) -->
     <div class="modal" id="modal-cartao">
-        <div class="modal-content modal-small">
+        <div class="modal-content modal-large">
             <button class="modal-close" id="close-cartao-modal">&times;</button>
             <div class="modal-icon">💳</div>
             <h3>Pagamento com Cartão</h3>
             
-            <form id="form-cartao">
-                <div class="form-group">
-                    <label>Número do Cartão</label>
-                    <input type="text" id="cardNumber" placeholder="0000 0000 0000 0000" class="input-field" maxlength="19">
-                </div>
+            <form id="form-checkout">
+                <div id="form-checkout__cardNumber" class="card-container"></div>
+                <div id="form-checkout__expirationDate" class="card-container"></div>
+                <div id="form-checkout__securityCode" class="card-container"></div>
+                <input type="text" id="form-checkout__cardholderName" placeholder="Nome do titular" class="input-field">
+                <select id="form-checkout__issuer" class="input-field"></select>
+                <select id="form-checkout__installments" class="input-field"></select>
+                <select id="form-checkout__identificationType" class="input-field">
+                    <option value="CPF">CPF</option>
+                </select>
+                <input type="text" id="form-checkout__identificationNumber" placeholder="Número do documento" class="input-field">
+                <input type="email" id="form-checkout__cardholderEmail" placeholder="E-mail" class="input-field">
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Validade</label>
-                        <input type="text" id="cardExpiry" placeholder="MM/AA" class="input-field" maxlength="5">
-                    </div>
-                    <div class="form-group">
-                        <label>CVV</label>
-                        <input type="text" id="cardCvv" placeholder="123" class="input-field" maxlength="4">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Nome no Cartão</label>
-                    <input type="text" id="cardHolder" placeholder="Como está no cartão" class="input-field">
-                </div>
-                
-                <div class="form-group">
-                    <label>CPF do Titular</label>
-                    <input type="text" id="cardDocument" placeholder="000.000.000-00" class="input-field" maxlength="14">
-                </div>
-                
-                <div class="form-group">
-                    <label>Parcelas</label>
-                    <select id="installments" class="input-field">
-                        <option value="1">1x de R$ --</option>
-                    </select>
-                </div>
-                
-                <button type="submit" id="btn-pagar-cartao" class="btn btn-primary btn-full">💳 Pagar Agora</button>
+                <button type="submit" id="form-checkout__submit" class="btn btn-primary btn-full">Pagar Agora</button>
             </form>
             
-            <div id="cartao-loading" style="display:none; text-align:center; padding:15px;">
+            <div id="loading-cartao" style="display:none; text-align:center; padding:15px;">
                 <div class="spinner"></div>
                 <p>Processando pagamento...</p>
             </div>

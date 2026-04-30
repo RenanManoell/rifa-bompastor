@@ -556,12 +556,14 @@ async function processarPagamentoMultiplo() {
                 
                 showToast(`Pagamento PIX gerado! Total: ${formatarMoeda(result.valor_total)}`, "success");
             } else {
-                // CARTÃO: abre modal com formulário
-                atualizarParcelas(currentAmount);
+                // CARTÃO: abre modal com CardForm
+                currentAmountCartao = currentAmount;
                 document.getElementById('modal-cartao').style.display = 'flex';
                 
-                // Inicializar Mercado Pago
-                iniciarMercadoPago();
+                // Aguardar o modal ser exibido e iniciar o CardForm
+                setTimeout(() => {
+                    iniciarCardForm();
+                }, 100);
             }
             
             carrinho = [];
@@ -647,13 +649,13 @@ async function processarPagamentoCartao() {
     try {
         iniciarMercadoPago();
         
-        console.log("Gerando token com os dados:");
-        console.log("Card Number:", cardNumber);
-        console.log("Expiry Month:", parseInt(expMonth));
-        console.log("Expiry Year:", parseInt("20" + expYear));
-        console.log("CVV:", cardCvv);
-        console.log("Holder:", cardHolder);
-        console.log("CPF:", cardDocument);
+        // //console.log("Gerando token com os dados:");
+        // //console.log("Card Number:", cardNumber);
+        // //console.log("Expiry Month:", parseInt(expMonth));
+        // //console.log("Expiry Year:", parseInt("20" + expYear));
+        // //console.log("CVV:", cardCvv);
+        // //console.log("Holder:", cardHolder);
+        // //console.log("CPF:", cardDocument);
         
         // Gerar token do cartão com TODOS os dados obrigatórios
         const cardToken = await mp.createCardToken({
@@ -666,7 +668,7 @@ async function processarPagamentoCartao() {
             expirationYear: parseInt("20" + expYear)  // Converter para ano completo (ex: 2025)
         });
         
-        console.log("Resposta do token:", cardToken);
+        //console.log("Resposta do token:", cardToken);
         
         const tokenId = cardToken.id;
         
@@ -674,21 +676,21 @@ async function processarPagamentoCartao() {
             throw new Error("Não foi possível gerar o token do cartão");
         }
         
-        console.log("Token gerado com sucesso:", tokenId);
+        //console.log("Token gerado com sucesso:", tokenId);
         
         // Detectar bandeira
         const bandeira = detectarBandeira(cardNumber);
-        console.log("Bandeira detectada:", bandeira);
+        //console.log("Bandeira detectada:", bandeira);
         
         // Enviar para o backend
         const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${tokenId}&installments=${installments}&payment_method_id=${bandeira}`;
         
-        console.log("Enviando requisição para:", url);
+        //console.log("Enviando requisição para:", url);
         
         const response = await fetch(url);
         const result = await response.json();
         
-        console.log("Resposta do backend:", result);
+        //console.log("Resposta do backend:", result);
         
         if (result.success) {
             showToast("✅ Pagamento aprovado! Enviando e-mail de confirmação...", "success");
@@ -979,4 +981,112 @@ function atualizarParcelas(valor) {
             `<option value="${p.num}">${p.descricao}</option>`
         ).join('');
     }
+}
+
+
+let currentAmountCartao = 0;
+
+function iniciarCardForm() {
+    const mp = new MercadoPago('APP_USR-5f9067e1-6b8d-4ad6-8be5-e45da73b1660', {
+        locale: 'pt-BR'
+    });
+    
+    cardForm = mp.cardForm({
+        amount: currentAmountCartao.toString(),
+        iframe: true,
+        form: {
+            id: "form-checkout",
+            cardNumber: { id: "form-checkout__cardNumber", placeholder: "Número do cartão" },
+            expirationDate: { id: "form-checkout__expirationDate", placeholder: "MM/YY" },
+            securityCode: { id: "form-checkout__securityCode", placeholder: "Código de segurança" },
+            cardholderName: { id: "form-checkout__cardholderName", placeholder: "Titular do cartão" },
+            issuer: { id: "form-checkout__issuer", placeholder: "Banco emissor" },
+            installments: { id: "form-checkout__installments", placeholder: "Parcelas" },
+            identificationType: { id: "form-checkout__identificationType", placeholder: "Tipo de documento" },
+            identificationNumber: { id: "form-checkout__identificationNumber", placeholder: "Número do documento" },
+            cardholderEmail: { id: "form-checkout__cardholderEmail", placeholder: "E-mail" }
+        },
+        callbacks: {
+            onFormMounted: error => {
+                if (error) {
+                    console.error("Erro ao montar formulário:", error);
+                    showToast("Erro ao carregar formulário de pagamento", "error");
+                    return;
+                }
+                //console.log("Formulário de cartão montado com sucesso");
+            },
+            onSubmit: async (event) => {
+                event.preventDefault();
+                
+                //console.log("Submetendo pagamento...");
+                
+                const formData = cardForm.getCardFormData();
+                
+                //console.log("Dados do formulário:", {
+                //     token: formData.token,
+                //     payment_method_id: formData.paymentMethodId,
+                //     installments: formData.installments,
+                //     email: formData.cardholderEmail
+                // });
+                
+                const btn = document.getElementById('form-checkout__submit');
+                const formContainer = document.getElementById('form-checkout');
+                const loading = document.getElementById('loading-cartao');
+                
+                btn.disabled = true;
+                formContainer.style.display = 'none';
+                loading.style.display = 'block';
+                
+                try {
+                    const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${formData.token}&installments=${formData.installments}&payment_method_id=${formData.paymentMethodId}`;
+                    
+                    const response = await fetch(url);
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showToast("✅ Pagamento aprovado! Enviando e-mail de confirmação...", "success");
+                        
+                        const modalContent = document.querySelector('#modal-cartao .modal-content');
+                        const successDiv = document.createElement('div');
+                        successDiv.className = 'status-confirmado';
+                        successDiv.innerHTML = `
+                            <span style="font-size: 48px;">✅</span>
+                            <h3>Pagamento Confirmado!</h3>
+                            <p>Enviamos um e-mail de confirmação.</p>
+                            <p style="margin-top: 10px;">Agradecemos sua contribuição!</p>
+                        `;
+                        modalContent.appendChild(successDiv);
+                        
+                        setTimeout(() => {
+                            document.getElementById('modal-cartao').style.display = 'none';
+                            carregarNumeros();
+                            carregarInformacoesRifa();
+                            currentPaymentId = null;
+                            formContainer.style.display = 'block';
+                            loading.style.display = 'none';
+                            btn.disabled = false;
+                            successDiv.remove();
+                        }, 4000);
+                    } else {
+                        showToast(result.error || "Erro ao processar pagamento", "error");
+                        formContainer.style.display = 'block';
+                        loading.style.display = 'none';
+                        btn.disabled = false;
+                    }
+                } catch (error) {
+                    console.error("Erro:", error);
+                    showToast("Erro ao processar pagamento", "error");
+                    formContainer.style.display = 'block';
+                    loading.style.display = 'none';
+                    btn.disabled = false;
+                }
+            },
+            onFetching: (resource) => {
+                console.log("Buscando recurso: ", resource);
+                return () => {
+                    console.log("Recurso carregado");
+                };
+            }
+        }
+    });
 }
