@@ -640,7 +640,14 @@ async function processarPagamentoCartao() {
     try {
         iniciarMercadoPago();
         
-        // MÉTODO CORRETO: Criar token diretamente
+        console.log("Gerando token com os dados:");
+        console.log("Card Number:", cardNumber);
+        console.log("Expiry:", expMonth, expYear);
+        console.log("CVV:", cardCvv);
+        console.log("Holder:", cardHolder);
+        console.log("CPF:", cardDocument);
+        
+        // Gerar token do cartão
         const cardToken = await mp.createCardToken({
             cardNumber: cardNumber,
             cardholderName: cardHolder,
@@ -651,16 +658,21 @@ async function processarPagamentoCartao() {
             expirationYear: parseInt(expYear)
         });
         
+        console.log("Resposta do token:", cardToken);
+        
         const tokenId = cardToken.id;
         
         if (!tokenId) {
             throw new Error("Não foi possível gerar o token do cartão");
         }
         
-        console.log("Token gerado:", tokenId);
+        console.log("Token gerado com sucesso:", tokenId);
         
-        // Enviar para o backend
-        const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${tokenId}&installments=${installments}`;
+        // Enviar para o backend com a bandeira detectada
+        const bandeira = detectarBandeira(cardNumber);
+        console.log("Bandeira detectada:", bandeira);
+        
+        const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${tokenId}&installments=${installments}&payment_method_id=${bandeira}`;
         
         const response = await fetch(url);
         const result = await response.json();
@@ -692,7 +704,6 @@ async function processarPagamentoCartao() {
                 currentPaymentId = null;
                 successDiv.remove();
                 if (formContainer) formContainer.style.display = 'block';
-                if (loadingContainer) loadingContainer.style.display = 'none';
             }, 4000);
         } else {
             showToast(result.error || "Erro ao processar pagamento", "error");
@@ -700,7 +711,7 @@ async function processarPagamentoCartao() {
             loading.style.display = 'none';
         }
     } catch (error) {
-        console.error("Erro no processamento do cartão:", error);
+        console.error("Erro detalhado no processamento do cartão:", error);
         showToast(error.message || "Erro ao processar cartão. Verifique os dados.", "error");
         form.style.display = 'block';
         loading.style.display = 'none';
