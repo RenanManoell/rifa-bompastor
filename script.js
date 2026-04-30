@@ -627,7 +627,14 @@ async function processarPagamentoCartao() {
         return;
     }
     
+    // Extrair mês e ano da validade
     const [expMonth, expYear] = cardExpiry.split('/');
+    
+    // Validar validade
+    if (!expMonth || !expYear || expMonth.length !== 2 || expYear.length !== 2) {
+        showToast("Data de validade inválida. Use MM/AA", "warning");
+        return;
+    }
     
     const btn = document.getElementById('btn-pagar-cartao');
     const loading = document.getElementById('cartao-loading');
@@ -642,12 +649,13 @@ async function processarPagamentoCartao() {
         
         console.log("Gerando token com os dados:");
         console.log("Card Number:", cardNumber);
-        console.log("Expiry:", expMonth, expYear);
+        console.log("Expiry Month:", parseInt(expMonth));
+        console.log("Expiry Year:", parseInt("20" + expYear));
         console.log("CVV:", cardCvv);
         console.log("Holder:", cardHolder);
         console.log("CPF:", cardDocument);
         
-        // Gerar token do cartão
+        // Gerar token do cartão com TODOS os dados obrigatórios
         const cardToken = await mp.createCardToken({
             cardNumber: cardNumber,
             cardholderName: cardHolder,
@@ -655,7 +663,7 @@ async function processarPagamentoCartao() {
             identificationNumber: cardDocument,
             securityCode: cardCvv,
             expirationMonth: parseInt(expMonth),
-            expirationYear: parseInt(expYear)
+            expirationYear: parseInt("20" + expYear)  // Converter para ano completo (ex: 2025)
         });
         
         console.log("Resposta do token:", cardToken);
@@ -668,14 +676,19 @@ async function processarPagamentoCartao() {
         
         console.log("Token gerado com sucesso:", tokenId);
         
-        // Enviar para o backend com a bandeira detectada
+        // Detectar bandeira
         const bandeira = detectarBandeira(cardNumber);
         console.log("Bandeira detectada:", bandeira);
         
+        // Enviar para o backend
         const url = `${API_URL}?action=processCardPayment&paymentId=${currentPaymentId}&token=${tokenId}&installments=${installments}&payment_method_id=${bandeira}`;
+        
+        console.log("Enviando requisição para:", url);
         
         const response = await fetch(url);
         const result = await response.json();
+        
+        console.log("Resposta do backend:", result);
         
         if (result.success) {
             showToast("✅ Pagamento aprovado! Enviando e-mail de confirmação...", "success");
@@ -692,7 +705,7 @@ async function processarPagamentoCartao() {
             successDiv.innerHTML = `
                 <span style="font-size: 48px;">✅</span>
                 <h3>Pagamento Confirmado!</h3>
-                <p>Enviamos um e-mail de confirmação.</p>
+                <p>Enviamos um e-mail de confirmação para ${email || 'seu e-mail'}.</p>
                 <p style="margin-top: 10px;">Agradecemos sua contribuição!</p>
             `;
             modalContent.appendChild(successDiv);
@@ -704,6 +717,7 @@ async function processarPagamentoCartao() {
                 currentPaymentId = null;
                 successDiv.remove();
                 if (formContainer) formContainer.style.display = 'block';
+                if (loadingContainer) loadingContainer.style.display = 'none';
             }, 4000);
         } else {
             showToast(result.error || "Erro ao processar pagamento", "error");
