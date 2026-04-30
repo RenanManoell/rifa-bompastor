@@ -587,7 +587,7 @@ async function processarPagamentoMultiplo() {
 
 function iniciarMercadoPago() {
     // Public Key do Mercado Pago (coloque a sua)
-    const publicKey = 'APP_USR-5f9067e1-6b8d-4ad6-8be5-e45da73b1660';
+    const publicKey = 'APP_USR-bad76689-52b4-4d3b-8e7c-a6dc24b8282e';
     
     if (!mp) {
         mp = new MercadoPago(publicKey, {
