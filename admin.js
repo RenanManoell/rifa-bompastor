@@ -176,31 +176,151 @@ function atualizarGraficos(total, vendidos, disponiveis) {
 }
 
 async function carregarVendas() {
-    const response = await fetch(`${API_URL}?action=getNumbers&_=${Date.now()}`);
-    const result = await response.json();
-    
-    if (result.success) {
-        const ocupados = result.ocupados || [];
-        window.vendasData = ocupados;
-        renderizarTabelaVendas(ocupados);
+    try {
+        const response = await fetch(`${API_URL}?action=getNumbers&_=${Date.now()}`);
+        const result = await response.json();
         
-        const ultimas = ocupados.slice(-10).reverse();
-        const container = document.getElementById("ultimas-vendas-chart");
-        if (container) {
-            if (ultimas.length === 0) {
-                container.innerHTML = '<div class="venda-item">Nenhuma venda registrada</div>';
-            } else {
-                container.innerHTML = ultimas.map(v => `
-                    <div class="venda-item">
-                        <strong>Nº ${v.numero}</strong>
-                        <span>${v.comprador || "Anônimo"}</span>
-                        <span class="${v.status === 'pago' ? 'status-pago' : 'status-pendente'}">
-                            ${v.status === 'pago' ? '✓ Pago' : '⏳ Pendente'}
-                        </span>
-                    </div>
-                `).join("");
+        if (result.success) {
+            const ocupados = result.ocupados || [];
+            window.vendasData = ocupados;
+            renderizarTabelaVendas(ocupados);
+            
+            // FUNÇÃO PARA CONVERTER DATA PARA TIMESTAMP
+            const parseData = (dataStr) => {
+                if (!dataStr) return 0;
+                try {
+                    let data;
+                    if (typeof dataStr === 'string') {
+                        // Formato brasileiro: dd/MM/yyyy HH:mm
+                        if (dataStr.includes('/')) {
+                            const partes = dataStr.split(' ');
+                            const dataPartes = partes[0].split('/');
+                            if (dataPartes.length === 3) {
+                                data = new Date(
+                                    parseInt(dataPartes[2]), // ano
+                                    parseInt(dataPartes[1]) - 1, // mês (0-11)
+                                    parseInt(dataPartes[0]), // dia
+                                    0, 0, 0
+                                );
+                                // Adicionar hora se existir
+                                if (partes[1]) {
+                                    const horaPartes = partes[1].split(':');
+                                    if (horaPartes.length >= 2) {
+                                        data.setHours(parseInt(horaPartes[0]), parseInt(horaPartes[1]));
+                                    }
+                                }
+                            } else {
+                                data = new Date(dataStr);
+                            }
+                        } else if (dataStr.includes('T')) {
+                            // Formato ISO
+                            data = new Date(dataStr);
+                        } else {
+                            data = new Date(dataStr);
+                        }
+                    } else if (typeof dataStr === 'object' && dataStr.getTime) {
+                        data = dataStr;
+                    } else {
+                        data = new Date(dataStr);
+                    }
+                    
+                    const timestamp = data.getTime();
+                    return isNaN(timestamp) ? 0 : timestamp;
+                } catch(e) {
+                    return 0;
+                }
+            };
+            
+            // Filtrar apenas vendas pagas COM data válida
+            const vendasComData = ocupados.filter(v => {
+                if (v.status !== 'pago') return false;
+                if (!v.data_pagamento) return false;
+                const timestamp = parseData(v.data_pagamento);
+                return timestamp > 0;
+            });
+            
+            // ORDENAR POR DATA/HORA (mais recente primeiro)
+            vendasComData.sort((a, b) => {
+                const timeA = parseData(a.data_pagamento);
+                const timeB = parseData(b.data_pagamento);
+                return timeB - timeA; // Do mais novo para o mais antigo
+            });
+            
+            // Pegar as 10 mais recentes
+            const ultimas = vendasComData.slice(0, 50);
+            
+            const container = document.getElementById("ultimas-vendas-chart");
+            if (container) {
+                if (ultimas.length === 0) {
+                    container.innerHTML = '<div class="venda-item">Nenhuma venda registrada</div>';
+                } else {
+                    container.innerHTML = ultimas.map(v => {
+                        // Formatar data para exibição resumida
+                        let dataResumida = "";
+                        if (v.data_pagamento) {
+                            try {
+                                let data;
+                                if (typeof v.data_pagamento === 'string') {
+                                    if (v.data_pagamento.includes('/')) {
+                                        const partes = v.data_pagamento.split(' ');
+                                        const dataPartes = partes[0].split('/');
+                                        if (dataPartes.length === 3) {
+                                            data = new Date(
+                                                parseInt(dataPartes[2]),
+                                                parseInt(dataPartes[1]) - 1,
+                                                parseInt(dataPartes[0])
+                                            );
+                                            if (partes[1]) {
+                                                const horaPartes = partes[1].split(':');
+                                                if (horaPartes.length >= 2) {
+                                                    data.setHours(parseInt(horaPartes[0]), parseInt(horaPartes[1]));
+                                                }
+                                            }
+                                        } else {
+                                            data = new Date(v.data_pagamento);
+                                        }
+                                    } else {
+                                        data = new Date(v.data_pagamento);
+                                    }
+                                } else {
+                                    data = new Date(v.data_pagamento);
+                                }
+                                
+                                if (!isNaN(data.getTime())) {
+                                    const dia = data.getDate().toString().padStart(2, '0');
+                                    const mes = (data.getMonth() + 1).toString().padStart(2, '0');
+                                    const hora = data.getHours().toString().padStart(2, '0');
+                                    const minuto = data.getMinutes().toString().padStart(2, '0');
+                                    dataResumida = `${dia}/${mes} ${hora}:${minuto}`;
+                                }
+                            } catch(e) {
+                                dataResumida = "";
+                            }
+                        }
+                        
+                        return `
+                            <div class="venda-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <div>
+                                        <strong style="background: #2d5a4b; color: white; padding: 2px 8px; border-radius: 20px; font-size: 12px;">
+                                            Nº ${v.numero}
+                                        </strong>
+                                        <span style="margin-left: 10px; font-size: 13px;">${v.comprador || "Anônimo"}</span>
+                                    </div>
+                                    <div>
+                                        <span style="font-size: 11px; color: #888;">${dataResumida}</span>
+                                        <span style="margin-left: 8px; color: #2e7d64;">✓</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join("");
+                }
             }
         }
+    } catch (error) {
+        console.error("Erro ao carregar vendas:", error);
+        showToast("Erro ao carregar vendas", "error");
     }
 }
 
@@ -209,21 +329,121 @@ function renderizarTabelaVendas(vendas) {
     if (!tbody) return;
     
     if (vendas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">Nenhuma venda registrada</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center">Nenhuma venda registrada</td></tr>';
         return;
     }
     
-    tbody.innerHTML = vendas.map(v => `
-        <tr>
-            <td><strong>${v.numero}</strong></td>
-            <td>${v.comprador || "-"}</td>
-            <td>-</td>
-            <td>-</td>
-            <td>R$ 10,00</td>
-            <td class="${v.status === 'pago' ? 'status-pago' : 'status-pendente'}">${v.status === 'pago' ? 'Pago' : 'Pendente'}</td>
-            <td>-</td>
-        </tr>
-    `).join("");
+    // Obter o valor do bilhete
+    const valorBilheteTexto = document.getElementById('valor-bilhete')?.innerHTML || 'R$ 10,00';
+    const valorBilhete = parseFloat(valorBilheteTexto.replace(/[^0-9,]/g, '').replace(',', '.')) || 10;
+    
+    tbody.innerHTML = vendas.map(v => {
+        // FUNÇÃO CORRIGIDA PARA FORMATAR DATA
+        let dataFormatada = "-";
+        if (v.data_pagamento && v.data_pagamento !== "Invalid Date") {
+            try {
+                let data;
+                
+                // Verificar se é string ISO
+                if (typeof v.data_pagamento === 'string') {
+                    // Tentar criar data de diferentes formatos
+                    if (v.data_pagamento.includes('T')) {
+                        // Formato ISO
+                        data = new Date(v.data_pagamento);
+                    } else if (v.data_pagamento.includes('/')) {
+                        // Formato brasileiro dd/MM/yyyy
+                        const partes = v.data_pagamento.split(' ');
+                        const dataPartes = partes[0].split('/');
+                        if (dataPartes.length === 3) {
+                            data = new Date(dataPartes[2], dataPartes[1] - 1, dataPartes[0]);
+                            // Se tiver hora
+                            if (partes[1]) {
+                                const horaPartes = partes[1].split(':');
+                                if (horaPartes.length === 2) {
+                                    data.setHours(parseInt(horaPartes[0]), parseInt(horaPartes[1]));
+                                }
+                            }
+                        } else {
+                            data = new Date(v.data_pagamento);
+                        }
+                    } else {
+                        data = new Date(v.data_pagamento);
+                    }
+                } else {
+                    data = new Date(v.data_pagamento);
+                }
+                
+                // Verificar se a data é válida
+                if (!isNaN(data.getTime())) {
+                    dataFormatada = data.toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } else {
+                    // Se ainda assim for inválido, mostrar o valor original
+                    dataFormatada = String(v.data_pagamento);
+                }
+            } catch(e) {
+                console.error("Erro ao formatar data:", e);
+                dataFormatada = String(v.data_pagamento);
+            }
+        } else if (v.data_pagamento && typeof v.data_pagamento === 'string') {
+            // Mostrar o valor original mesmo se tiver "Invalid Date"
+            dataFormatada = v.data_pagamento;
+        }
+        
+        // Formatar telefone
+        let telefoneFormatado = "-";
+        if (v.telefone) {
+            let numbers = String(v.telefone).replace(/\D/g, "");
+            if (numbers.length === 11) {
+                telefoneFormatado = `(${numbers.substring(0, 2)}) ${numbers.substring(2, 7)}-${numbers.substring(7)}`;
+            } else if (numbers.length === 10) {
+                telefoneFormatado = `(${numbers.substring(0, 2)}) ${numbers.substring(2, 6)}-${numbers.substring(6)}`;
+            } else {
+                telefoneFormatado = v.telefone;
+            }
+        }
+        
+        return `
+            <tr>
+                <td><strong>${v.numero}</strong></td>
+                <td>${v.comprador || "-"}</td>
+                <td>${v.email || "-"}</td>
+                <td>${telefoneFormatado}</td>
+                <td>${formatarMoeda(valorBilhete)}</td>
+                <td class="${v.status === 'pago' ? 'status-pago' : 'status-pendente'}">
+                    ${v.status === 'pago' ? '✅ Pago' : '⏳ Pendente'}
+                </td>
+                <td>${dataFormatada}</td>
+                <td>${v.numero_sorteado === 'SIM' ? '⭐ Sorteado' : '-'}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function formatPhoneDisplay(telefone) {
+    if (!telefone) return "-";
+    
+    // Converter para string e remover tudo que não é número
+    let numbers = String(telefone).replace(/\D/g, "");
+    
+    if (numbers.length === 11) {
+        // celular com 9 dígitos: (11) 91234-5678
+        return `(${numbers.substring(0, 2)}) ${numbers.substring(2, 7)}-${numbers.substring(7)}`;
+    } else if (numbers.length === 10) {
+        // telefone fixo: (11) 1234-5678
+        return `(${numbers.substring(0, 2)}) ${numbers.substring(2, 6)}-${numbers.substring(6)}`;
+    } else if (numbers.length === 13 && numbers.startsWith("55")) {
+        // com código do país +55 (11) 91234-5678
+        return `+${numbers.substring(0, 2)} (${numbers.substring(2, 4)}) ${numbers.substring(4, 9)}-${numbers.substring(9)}`;
+    }
+    
+    // Se não conseguir formatar, retorna o original
+    return telefone;
 }
 
 function filtrarVendas() {
@@ -238,35 +458,39 @@ function filtrarVendas() {
 }
 
 async function carregarTopContribuintes() {
-    const response = await fetch(`${API_URL}?action=getNumbers&_=${Date.now()}`);
-    const result = await response.json();
-    
-    if (result.success) {
-        const pagos = (result.ocupados || []).filter(v => v.status === "pago");
-        const contribuintes = {};
-        pagos.forEach(v => {
-            if (v.comprador) {
-                contribuintes[v.comprador] = (contribuintes[v.comprador] || 0) + 1;
-            }
-        });
+    try {
+        const response = await fetch(`${API_URL}?action=getNumbers&_=${Date.now()}`);
+        const result = await response.json();
         
-        const top = Object.entries(contribuintes)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5);
-        
-        const container = document.getElementById("top-contribuintes");
-        if (container) {
-            if (top.length === 0) {
-                container.innerHTML = '<div class="top-item">Nenhum contribuinte ainda</div>';
-            } else {
-                container.innerHTML = top.map(([nome, qtd]) => `
-                    <div class="top-item">
-                        <strong>${nome}</strong>
-                        <span>${qtd} número${qtd !== 1 ? 's' : ''}</span>
-                    </div>
-                `).join("");
+        if (result.success) {
+            const pagos = (result.ocupados || []).filter(v => v.status === "pago");
+            const contribuintes = {};
+            pagos.forEach(v => {
+                if (v.comprador) {
+                    contribuintes[v.comprador] = (contribuintes[v.comprador] || 0) + 1;
+                }
+            });
+            
+            const top = Object.entries(contribuintes)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            const container = document.getElementById("top-contribuintes");
+            if (container) {
+                if (top.length === 0) {
+                    container.innerHTML = '<div class="top-item">Nenhum contribuinte ainda</div>';
+                } else {
+                    container.innerHTML = top.map(([nome, qtd]) => `
+                        <div class="top-item">
+                            <strong>${nome}</strong>
+                            <span>${qtd} número${qtd !== 1 ? 's' : ''}</span>
+                        </div>
+                    `).join("");
+                }
             }
         }
+    } catch (error) {
+        console.error("Erro ao carregar top contribuintes:", error);
     }
 }
 
@@ -277,7 +501,7 @@ async function carregarMatrizNumeros() {
     if (result.success) {
         const disponiveis = result.disponiveis || [];
         const ocupados = result.ocupados || [];
-        const total = 100;
+        const total = 1000;
         
         let html = "";
         for (let i = 1; i <= total; i++) {
@@ -372,17 +596,101 @@ async function buscarNumero() {
 function exportarCSV() {
     if (!window.vendasData) return;
     
-    let csv = "Número,Comprador,Status\n";
+    // Cabeçalho do CSV
+    let csv = "Número;Comprador;E-mail;Telefone;Valor;Status;Data Pagamento;Número Sorteado\n";
+    
+    // Obter o valor do bilhete
+    const valorBilheteTexto = document.getElementById('valor-bilhete')?.innerHTML || 'R$ 10,00';
+    const valorBilhete = parseFloat(valorBilheteTexto.replace(/[^0-9,]/g, '').replace(',', '.')) || 10;
+    
     window.vendasData.forEach(v => {
-        csv += `${v.numero},"${v.comprador || ""}",${v.status}\n`;
+        // ===== MESMA LÓGICA DE FORMATAÇÃO DE DATA DO RENDERIZAR TABELA =====
+        let dataFormatada = "";
+        if (v.data_pagamento && v.data_pagamento !== "Invalid Date") {
+            try {
+                let data;
+                
+                // Verificar se é string ISO
+                if (typeof v.data_pagamento === 'string') {
+                    // Tentar criar data de diferentes formatos
+                    if (v.data_pagamento.includes('T')) {
+                        // Formato ISO
+                        data = new Date(v.data_pagamento);
+                    } else if (v.data_pagamento.includes('/')) {
+                        // Formato brasileiro dd/MM/yyyy
+                        const partes = v.data_pagamento.split(' ');
+                        const dataPartes = partes[0].split('/');
+                        if (dataPartes.length === 3) {
+                            data = new Date(dataPartes[2], dataPartes[1] - 1, dataPartes[0]);
+                            // Se tiver hora
+                            if (partes[1]) {
+                                const horaPartes = partes[1].split(':');
+                                if (horaPartes.length === 2) {
+                                    data.setHours(parseInt(horaPartes[0]), parseInt(horaPartes[1]));
+                                }
+                            }
+                        } else {
+                            data = new Date(v.data_pagamento);
+                        }
+                    } else {
+                        data = new Date(v.data_pagamento);
+                    }
+                } else {
+                    data = new Date(v.data_pagamento);
+                }
+                
+                // Verificar se a data é válida
+                if (!isNaN(data.getTime())) {
+                    dataFormatada = data.toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } else {
+                    dataFormatada = String(v.data_pagamento);
+                }
+            } catch(e) {
+                dataFormatada = String(v.data_pagamento);
+            }
+        } else if (v.data_pagamento && typeof v.data_pagamento === 'string') {
+            dataFormatada = v.data_pagamento;
+        }
+        
+        // Formatar telefone (só números para o CSV)
+        let telefone = v.telefone || "";
+        telefone = String(telefone).replace(/\D/g, "");
+        
+        // Formatar valor com vírgula
+        const valorFormatado = valorBilhete.toFixed(2).replace('.', ',');
+        
+        // Status
+        const statusTexto = v.status === 'pago' ? 'Pago' : 'Pendente';
+        
+        // Número sorteado
+        const sorteado = (v.status === 'pago' && v.numero_sorteado === 'SIM') ? 'SIM' : 'NÃO';
+        
+        // Adicionar linha ao CSV
+        csv += `${v.numero};"${v.comprador || ""}";"${v.email || ""}";"${telefone}";${valorFormatado};${statusTexto};"${dataFormatada}";${sorteado}\n`;
     });
     
-    const blob = new Blob([csv], { type: "text/csv" });
+    // Criar arquivo com BOM para suporte a acentos
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `vendas_${new Date().toISOString().slice(0, 19)}.csv`;
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    
+    // Nome do arquivo com data
+    const agora = new Date();
+    const dataStr = `${agora.getFullYear()}-${(agora.getMonth()+1).toString().padStart(2,'0')}-${agora.getDate().toString().padStart(2,'0')}`;
+    link.download = `vendas_${dataStr}.csv`;
+    
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
     showToast("CSV exportado com sucesso!", "success");
 }
 
