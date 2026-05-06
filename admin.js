@@ -533,24 +533,35 @@ async function venderNumeroManual() {
         return;
     }
     
+    // Confirmar venda manual
+    const confirmar = confirm(`Confirmar venda MANUAL do número ${numero} para ${nome}?\n\nUm e-mail de confirmação será enviado para ${email}`);
+    if (!confirmar) return;
+    
     showLoading(true);
     try {
-        const url = `${API_URL}?action=createPayment&numero=${numero}&comprador=${encodeURIComponent(nome)}&email=${encodeURIComponent(email)}&telefone=${encodeURIComponent(telefone)}`;
+        // Usar nova função de venda manual
+        const url = `${API_URL}?action=sellManual&numero=${numero}&comprador=${encodeURIComponent(nome)}&email=${encodeURIComponent(email)}&telefone=${encodeURIComponent(telefone)}`;
         const response = await fetch(url);
         const result = await response.json();
         
         if (result.success) {
-            showToast(`Venda do número ${numero} registrada para ${nome}`, "success");
+            showToast(`✅ Venda MANUAL do número ${numero} registrada para ${nome}`, "success");
+            
+            // Limpar campos
             document.getElementById("venda-numero").value = "";
             document.getElementById("venda-nome").value = "";
             document.getElementById("venda-email").value = "";
             document.getElementById("venda-telefone").value = "";
+            
+            // Recarregar dados
             await carregarTodosDados();
             if (currentTab === "numeros") carregarMatrizNumeros();
+            
         } else {
-            showToast(result.error || "Erro ao registrar venda", "error");
+            showToast(result.error || "Erro ao registrar venda manual", "error");
         }
     } catch (error) {
+        console.error(error);
         showToast("Erro de conexão", "error");
     } finally {
         showLoading(false);
