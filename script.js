@@ -132,6 +132,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             document.getElementById("cart").classList.toggle("cart-minimized");
         });
     }
+    
+    await carregarStatusRifaFront();
 });
 
 function initFilters() {
@@ -1090,3 +1092,125 @@ function iniciarCardForm() {
         }
     });
 }
+
+// ============================================
+// STATUS DA RIFA E GANHADORES
+// ============================================
+
+let rifaStatus = "aberta";
+
+async function carregarStatusRifaFront() {
+    try {
+        const response = await fetch(`${API_URL}?action=getStatusRifa&_=${Date.now()}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            rifaStatus = result.status;
+            const statusBanner = document.getElementById("status-banner");
+            const statusIcon = document.getElementById("status-icon");
+            const statusText = document.getElementById("status-text");
+            const waitingScreen = document.getElementById("waiting-screen");
+            const winnersScreen = document.getElementById("winners-screen");
+            const container = document.getElementById("container");
+            const numerosSection = document.querySelector(".numbers-section");
+            const cart = document.getElementById("cart");
+            const filters = document.querySelector(".filters");
+            const valueCard = document.querySelector(".value-card");
+            
+            if (result.status === "aberta") {
+                // Rifa aberta - mostrar tudo normalmente
+                statusBanner.style.display = "block";
+                statusBanner.className = "status-banner aberta";
+                statusIcon.innerHTML = "🟢";
+                statusText.innerHTML = result.mensagem || "🎲 RIFA ABERTA! Participe agora mesmo! 🎲";
+                waitingScreen.style.display = "none";
+                winnersScreen.style.display = "none";
+                if (container) container.style.display = "block";
+                if (numerosSection) numerosSection.style.display = "block";
+                if (cart) cart.style.display = "block";
+                if (filters) filters.style.display = "flex";
+                if (valueCard) valueCard.style.display = "flex";
+                
+                // Habilitar compras
+                document.getElementById("btn-finalizar").disabled = false;
+                
+            } else if (result.status === "fechada") {
+                // Rifa fechada - mostrar tela de aguardando sorteio
+                statusBanner.style.display = "block";
+                statusBanner.className = "status-banner fechada";
+                statusIcon.innerHTML = "🔴";
+                statusText.innerHTML = result.mensagem || "🔴 RIFA ENCERRADA! Aguardando o sorteio... 🔴";
+                waitingScreen.style.display = "flex";
+                winnersScreen.style.display = "none";
+                if (container) container.style.display = "none";
+                
+                // Ocultar elementos de compra
+                if (numerosSection) numerosSection.style.display = "none";
+                if (cart) cart.style.display = "none";
+                if (filters) filters.style.display = "none";
+                if (valueCard) valueCard.style.display = "none";
+                
+                // Desabilitar compras
+                document.getElementById("btn-finalizar").disabled = true;
+                
+            } else if (result.status === "finalizada") {
+                // Rifa finalizada - mostrar ganhadores
+                statusBanner.style.display = "none";
+                waitingScreen.style.display = "none";
+                winnersScreen.style.display = "flex";
+                if (container) container.style.display = "none";
+                
+                // Exibir ganhadores
+                if (result.ganhadores && result.ganhadores.length > 0) {
+                    exibirGanhadoresFront(result.ganhadores);
+                } else {
+                    document.getElementById("winners-grid").innerHTML = '<div class="no-winners">Aguardando divulgação dos ganhadores...</div>';
+                }
+            }
+        }
+    } catch(error) {
+        console.error("Erro ao carregar status:", error);
+    }
+}
+
+function exibirGanhadoresFront(ganhadores) {
+    const container = document.getElementById("winners-grid");
+    if (!container) return;
+    
+    // Ordenar por posição
+    ganhadores.sort((a, b) => a.posicao - b.posicao);
+    
+    let html = "";
+    for (const g of ganhadores) {
+        let posicaoClass = "";
+        let premioIcon = "";
+        
+        if (g.posicao === 1) {
+            posicaoClass = "winner-1";
+            premioIcon = "🥇";
+        } else if (g.posicao === 2) {
+            posicaoClass = "winner-2";
+            premioIcon = "🥈";
+        } else if (g.posicao === 3) {
+            posicaoClass = "winner-3";
+            premioIcon = "🥉";
+        }
+        
+        html += `
+            <div class="winner-card ${posicaoClass}">
+                <div class="winner-medal">${premioIcon}</div>
+                <div class="winner-place">${g.posicao}º LUGAR</div>
+                <div class="winner-prize">${g.premio}</div>
+                <div class="winner-number">🎫 NÚMERO ${g.numero}</div>
+                <div class="winner-name">👤 ${g.nome}</div>
+                <div class="winner-date">📅 ${g.data}</div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+// Atualizar status a cada minuto
+setInterval(() => {
+    carregarStatusRifaFront();
+}, 60000);

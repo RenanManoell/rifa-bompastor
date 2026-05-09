@@ -41,6 +41,7 @@
             <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
             <button class="tab-btn" data-tab="vendas">💰 Vendas</button>
             <button class="tab-btn" data-tab="numeros">🔢 Gerenciar Números</button>
+            <button class="tab-btn" data-tab="sorteio">🎲 Sorteio</button>
             <!-- <button class="tab-btn" data-tab="config">⚙️ Configurações</button> -->
         </div>
 
@@ -196,6 +197,44 @@
                         <span class="stat-mini-value" id="stat-pendentes">0</span>
                         <span>Pagamentos Pendentes</span>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TAB SORTEIO -->
+        <div id="tab-sorteio" class="tab-content">
+            <div class="admin-section">
+                <h3>⚙️ Configurar Data de Encerramento</h3>
+                <div class="form-group">
+                    <label>Data e Hora do Fechamento</label>
+                    <input type="datetime-local" id="fechamento-data" class="input-field">
+                    <button id="btn-salvar-fechamento" class="btn-primary" style="margin-top: 10px;">Salvar Configuração</button>
+                </div>
+                <div id="status-fechamento" class="status-box"></div>
+            </div>
+
+            <div class="admin-section">
+                <h3>🎯 Registrar Ganhadores</h3>
+                <div class="form-group">
+                    <label>🥇 1º Lugar - Televisão 32"</label>
+                    <input type="number" id="primeiro-numero" placeholder="Número do 1º lugar" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label>🥈 2º Lugar - Airfryer</label>
+                    <input type="number" id="segundo-numero" placeholder="Número do 2º lugar" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label>🥉 3º Lugar - Cesta de Café da Manhã</label>
+                    <input type="number" id="terceiro-numero" placeholder="Número do 3º lugar" class="input-field">
+                </div>
+                <button id="btn-salvar-ganhadores" class="btn-primary">🏆 Salvar Ganhadores</button>
+                <button id="btn-fechar-rifa" class="btn-secondary" style="margin-left: 10px;">🔒 Fechar Rifa Manualmente</button>
+            </div>
+
+            <div class="admin-section">
+                <h3>🏆 Ganhadores Registrados</h3>
+                <div id="lista-ganhadores" class="ganhadores-list">
+                    Carregando...
                 </div>
             </div>
         </div>

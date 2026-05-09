@@ -80,7 +80,10 @@ function configurarEventos() {
     document.getElementById("btn-buscar").onclick = () => buscarNumero();
     document.getElementById("btn-refresh").onclick = () => carregarTodosDados();
     document.getElementById("btn-exportar").onclick = () => exportarCSV();
-    document.getElementById("btn-salvar-config").onclick = () => salvarConfiguracoes();
+    // Dentro de configurarEventos(), adicione:
+    document.getElementById("btn-salvar-fechamento").onclick = () => salvarConfigEncerramento();
+    document.getElementById("btn-salvar-ganhadores").onclick = () => salvarGanhadores();
+    document.getElementById("btn-fechar-rifa").onclick = () => fecharRifaManualmente();
     document.getElementById("buscar-venda")?.addEventListener("input", () => filtrarVendas());
 }
 
@@ -95,7 +98,9 @@ async function carregarTodosDados() {
             carregarEstatisticas(),
             carregarVendas(),
             carregarTopContribuintes(),
-            carregarConfiguracoes()
+            carregarConfiguracoes(),
+            carregarStatusRifa(),
+            carregarGanhadores()
         ]);
     } catch (error) {
         console.error(error);
@@ -719,4 +724,195 @@ async function carregarConfiguracoes() {
 
 async function salvarConfiguracoes() {
     showToast("Configurações salvas! (Recarregue a página para ver efeitos)", "success");
+}
+
+
+// Função para salvar config de encerramento
+async function salvarConfigEncerramento() {
+    const dataFechamento = document.getElementById("fechamento-data").value;
+    if (!dataFechamento) {
+        showToast("Selecione uma data e hora", "warning");
+        return;
+    }
+    
+    showLoading(true);
+    try {
+        const url = `${API_URL}?action=salvarConfigEncerramento&data_fechamento=${encodeURIComponent(dataFechamento)}&hora_fechamento=${encodeURIComponent(dataFechamento)}`;
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast("Configuração salva com sucesso!", "success");
+            carregarStatusRifa();
+        } else {
+            showToast(result.error || "Erro ao salvar", "error");
+        }
+    } catch(error) {
+        showToast("Erro de conexão", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Função para salvar ganhadores
+async function salvarGanhadores() {
+    const primeiro = document.getElementById("primeiro-numero").value;
+    const segundo = document.getElementById("segundo-numero").value;
+    const terceiro = document.getElementById("terceiro-numero").value;
+    
+    if (!primeiro && !segundo && !terceiro) {
+        showToast("Preencha pelo menos um ganhador", "warning");
+        return;
+    }
+    
+    // Buscar nomes dos compradores
+    const response = await fetch(`${API_URL}?action=getNumbers&_=${Date.now()}`);
+    const result = await response.json();
+    const ocupados = result.ocupados || [];
+    
+    const ganhadores = [];
+    
+    const getNome = (numero) => {
+        const encontrado = ocupados.find(o => o.numero == numero);
+        return encontrado ? encontrado.comprador : "Desconhecido";
+    };
+    
+    if (primeiro) {
+        ganhadores.push({
+            posicao: 1,
+            premio: "Televisão 32\"",
+            numero: parseInt(primeiro),
+            nome: getNome(primeiro),
+            data: new Date().toLocaleString('pt-BR')
+        });
+    }
+    
+    if (segundo) {
+        ganhadores.push({
+            posicao: 2,
+            premio: "Airfryer",
+            numero: parseInt(segundo),
+            nome: getNome(segundo),
+            data: new Date().toLocaleString('pt-BR')
+        });
+    }
+    
+    if (terceiro) {
+        ganhadores.push({
+            posicao: 3,
+            premio: "Cesta de Café da Manhã",
+            numero: parseInt(terceiro),
+            nome: getNome(terceiro),
+            data: new Date().toLocaleString('pt-BR')
+        });
+    }
+    
+    showLoading(true);
+    try {
+        const url = `${API_URL}?action=salvarGanhadores&ganhadores=${encodeURIComponent(JSON.stringify(ganhadores))}`;
+        const resp = await fetch(url);
+        const result = await resp.json();
+        
+        if (result.success) {
+            showToast("Ganhadores salvos com sucesso!", "success");
+            carregarGanhadores();
+            // Limpar campos
+            document.getElementById("primeiro-numero").value = "";
+            document.getElementById("segundo-numero").value = "";
+            document.getElementById("terceiro-numero").value = "";
+        } else {
+            showToast(result.error || "Erro ao salvar", "error");
+        }
+    } catch(error) {
+        showToast("Erro de conexão", "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Função para carregar status da rifa
+async function carregarStatusRifa() {
+    try {
+        const response = await fetch(`${API_URL}?action=getStatusRifa&_=${Date.now()}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const statusBox = document.getElementById("status-fechamento");
+            if (statusBox) {
+                let statusText = "";
+                if (result.status === "aberta") {
+                    statusText = "🟢 RIFA ABERTA - Vendas ativas";
+                } else if (result.status === "fechada") {
+                    statusText = "🔴 RIFA FECHADA - Aguardando sorteio";
+                } else {
+                    statusText = "🏆 RIFA FINALIZADA - Sorteio realizado";
+                }
+                
+                if (result.fechamento) {
+                    const data = new Date(result.fechamento);
+                    statusText += `<br>📅 Data de fechamento: ${data.toLocaleString('pt-BR')}`;
+                }
+                
+                statusBox.innerHTML = `<div class="status-card">${statusText}</div>`;
+            }
+        }
+    } catch(error) {
+        console.error("Erro ao carregar status:", error);
+    }
+}
+
+// Função para carregar lista de ganhadores
+async function carregarGanhadores() {
+    try {
+        const response = await fetch(`${API_URL}?action=getStatusRifa&_=${Date.now()}`);
+        const result = await response.json();
+        
+        const container = document.getElementById("lista-ganhadores");
+        if (!container) return;
+        
+        if (result.success && result.ganhadores && result.ganhadores.length > 0) {
+            let html = '<div class="ganhadores-cards">';
+            for (const g of result.ganhadores) {
+                html += `
+                    <div class="ganhador-card">
+                        <div class="ganhador-posicao">${g.posicao}º Lugar</div>
+                        <div class="ganhador-premio">${g.premio}</div>
+                        <div class="ganhador-numero">🎫 Número: ${g.numero}</div>
+                        <div class="ganhador-nome">👤 ${g.nome}</div>
+                        <div class="ganhador-data">📅 ${g.data}</div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<div class="cart-empty">Nenhum ganhador registrado ainda</div>';
+        }
+    } catch(error) {
+        console.error("Erro ao carregar ganhadores:", error);
+        container.innerHTML = '<div class="cart-empty">Erro ao carregar ganhadores</div>';
+    }
+}
+
+// Função para fechar rifa manualmente
+async function fecharRifaManualmente() {
+    if (!confirm("Tem certeza que deseja fechar a rifa? Após fechada, as vendas serão bloqueadas.")) return;
+    
+    showLoading(true);
+    try {
+        const url = `${API_URL}?action=fecharRifa`;
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast("Rifa fechada com sucesso!", "success");
+            carregarStatusRifa();
+        } else {
+            showToast(result.error || "Erro ao fechar", "error");
+        }
+    } catch(error) {
+        showToast("Erro de conexão", "error");
+    } finally {
+        showLoading(false);
+    }
 }

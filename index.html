@@ -73,6 +73,33 @@
                 </div>
             </div>
         </section>
+        <!-- STATUS DA RIFA -->
+        <section class="status-banner" id="status-banner">
+            <div class="status-content" id="status-content">
+                <div class="status-icon" id="status-icon">🟢</div>
+                <div class="status-text" id="status-text">RIFA ABERTA! Participe agora mesmo!</div>
+            </div>
+        </section>
+
+        <!-- TELA DE AGUARDANDO SORTEIO (oculta inicialmente) -->
+        <div class="waiting-screen" id="waiting-screen" style="display: none;">
+            <div class="waiting-content">
+                <div class="waiting-icon">⏰</div>
+                <h2>RIFA ENCERRADA!</h2>
+                <p>As vendas foram finalizadas.</p>
+                <p>O sorteio será realizado em breve.</p>
+                <p class="waiting-emoji">🎲✨🙏</p>
+            </div>
+        </div>
+
+        <!-- TELA DE GANHADORES (oculta inicialmente) -->
+        <div class="winners-screen" id="winners-screen" style="display: none;">
+            <div class="winners-content">
+                <h2>🏆 GANHADORES DA RIFA 🏆</h2>
+                <div class="winners-grid" id="winners-grid"></div>
+                <button class="btn-voltar" onclick="location.reload()">🔄 Recarregar página</button>
+            </div>
+        </div>    
 
         <!-- ESTATÍSTICAS -->
         <section class="stats">
@@ -238,6 +265,8 @@
             </div>
         </div>
     </div>
+
+    
 
     <script src="script.js"></script>
 </body>
